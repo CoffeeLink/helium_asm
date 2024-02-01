@@ -1,0 +1,165 @@
+// Comments after: '//'
+
+// Registers: A: 0, B: 1, C: 2, X: 3, Y: 4, F: 5, SP: 6.
+// Note: the '$' sign is for telling the assembler that the value should be a register id.
+// Note: use the #no_predec directive to not have default constants.
+// Constants pre-declared for each register:
+// Reg A:  r0, rA, A
+// Reg B:  r1, rB, B
+// Reg C:  r2, rC, C
+// Reg X:  r3, rX, X
+// Reg Y:  r4, rY, Y
+// Reg F:  r5, rF, F
+// Reg SP: r6, rSP, SP
+
+// Immediate and other values:
+// Values can be numbers and constants.
+// Numbers can be typed in:
+//  Hex: 0x0F
+//  Bin: 0b1010_0001 // any underscores can be used.
+//  Dec: 100
+//  Dec(Negative): -100
+// Note that if a number overflows it will just be at the cap of that kind.
+// Constants are just alphanumeric characters with '_' included.
+// constants cannot be redeclared and can only be used after declaration.
+// Note: its recommended to declare all constants at the start of the script.
+
+// Arguments and their types
+// some instructions might have the capability to use the register defined by another register value.
+// this can be done with [<Register>]
+// Note: separating arguments with the ',' isn't necessary.
+
+// Directives
+// All Directives are declared with a #<Name> [<Args>];
+// Current Directives:
+//  #entry <label_name>; // The execution will start here. Note: the label must be a label and valid.
+//  #no_predec; // this must tells the assembler that no constants should be predefined.
+//  #skipto <addr>; // the program will continue at the specified address. Note: constants can also be used here.
+//  #pre_load <file_name>; // preloads a constant table from another file. Note: Not Implemented.
+//  #include <file_name>; // includes anther asm file. Note: other entry-points will be ignored, unless no entry is defined.
+
+// Instructions
+// Instructions can be typed All Upper/Lower Case, but not mixed.
+// Arguments after an instruction dont need a ',' but its recommended for nice looking code.
+// After an instruction has all its required args it can be separated with a ';'
+// this is also optional but its way cleaner and it can be used to cleanly put multiple instructions in 1 line.
+// Note: All arguments of an instruction must be on the same line as the instruction itself and in order.
+
+// Raw data in the program memory
+// by putting immediate data or constants without a instruction to begin with, that data will just be put on the program.
+// Note: put a label in front of your values if you want to use them like that.
+
+// All Instructions and descriptions.
+// Data types:
+//  Int: Any kind of number, if its given at a location that takes an addr, it will act like an addr.
+//  Register: an Int/Constant that starts with '$'.
+// NOTE: All these types just tell the compiler how to handle a value, if the $ is missing, they will just be passed by value.
+// Note: When an instruction can take a some value and a register in the same field adding (Reg) will take the reg.
+//  For example: doing MOV $A, $B; will put B-s value in A
+//  Other Example:
+//  ST $A, A; will store the value of A at the address of the const A, because its taken by value, not as a register ID.
+//  ST $A, $A; will store the value of regA at the address in RA
+//  Note that in this case ST $A, [$A] will work too.
+
+//System controls
+HLT // Stops the CPU
+NOP // Do nothing
+RST // Reset and restart
+
+// Interrupts
+INT // Calls a manual interrupt, does nothing if the CPU is in Interrupt Exec Mode.
+RIN // Returns from Interrupt Exec Mode, if not in IXM: Nop.
+WAI // Waits until an external interrupt event occurs and consumes-it (The ext interrupt won't put the CPU in IXM)
+SIA <Address|Register> // Sets the Interrupt Address to a registers value, or a given addr.
+
+// Registers
+MOV <Dest(Reg)>, <Value(Addr|Reg)> // Dest: destination register, Value: value to put in a reg, can be Int or Reg-s Value.
+
+ST <Register>, <Addr|Reg> // Store the value of Register at the address given, or given by a register.
+STP <Register>, <Addr|Reg> // Store the value of Register at the address given in the program memory, or given by a register.
+
+LD <Register>, <Addr|Reg> // Load from the memory to the given Register, at the addr, or the addr given by Reg.
+LDP <Register>, <Addr|Reg> // Load from the program memory to the given Register, at the addr, or the addr given by Reg.
+
+// Stack
+PSH <Register> // Push the contents of the Register to the variable stack.
+POP <Register> // Pop from the variable stack to the given Register.
+
+// Math And Logic.
+ADD <RegA>, <RegB>, <RegC> // ADD A+B And store result in C.
+ADC <RegA>, <RegB>, <RegC> // Add A+B+Carry And Store res in C.
+SUB <RegA>, <RegB>, <RegC> // Sub A - B and store in C.
+SBC <RegA>, <RegB>, <RegC> // Sub A - B with Carry and store in C.
+
+NEG <Reg> // turns Regs value into its negative and wise-versa.
+
+INC <Reg> // Reg++
+DEC <Reg> // Reg--
+
+AND <RegA>, <RegB>, <RegC> // And A & B -> C.
+OR  <RegA>, <RegB>, <RegC> // Or A | B -> C.
+XOR <RegA>, <RegB>, <RegC> // XOR A^B -> C.
+NOT <Reg>,  <RegResult> // Not !Reg -> RegResult.
+
+SHL <RegA>, <RegB>, <RegC> // Shift A left by B and store to C. A << B -> C.
+SHR <RegA>, <RegB>, <RegC> // Shift A right by B and store to C. A >> B -> C.
+
+// Bit Checking/Setting.
+SET <Target(Reg)> <TargetBit(Reg|Int)> <Value(Reg|Int)> // Set the given bit of a register.
+//NOTE: This command only has 3 patterns: Reg,Int,Int; Reg,Reg,Int; Reg,Reg,Reg; the one missing pattern is a skill issue tbh.
+
+BIT <Result(reg)> <Target(Reg)> <BitId(Int)> // Check if a given bit is set in a register.
+
+// Conditions and Branching
+
+//Comparing values
+CMP <RegA>, <RegB> // Compares A with B and stores all necessary stuff in the flags.
+CMS <RegA>, <RegB> // Compares A with B like they were signed and stores results in flags.
+//Note: Zero, Overflow and Carry flags are only set by math operations.
+
+// Branching
+JMP <Addr|Reg> // jumps to the given addr.
+CAL <Addr|Reg> // Jumps to the given addr and puts the return addr in the call stack.
+RET // returns to the last return point on the call stack.
+
+// Cond Jump
+JEQ <Addr|Reg> // Jump if EQ
+JNE <Addr|Reg> // Jump if Not EQ
+JLT <Addr|Reg> // Jump if Less Than
+JLE <Addr|Reg> // Jump if Less Than Equal
+JNL <Addr|Reg> // Jump if Not Less Than
+JGT <Addr|Reg> // Jump if Greater Than
+JGE <Addr|Reg> // Jump if Greater Than Equal
+JNG <Addr|Reg> // Jump if Not Greater Than
+
+JEZ <Addr|Reg> // Jump if Zero
+JOF <Addr|Reg> // Jump if Overflow
+JCR <Addr|Reg> // Jump if Carry
+
+// Cond Call
+CEQ <Addr|Reg> // Call if EQ
+CNE <Addr|Reg> // Call if Not EQ
+CLT <Addr|Reg> // Call if Less Than
+CLE <Addr|Reg> // Call if Less Than Equal
+CNL <Addr|Reg> // Call if Not Less Than
+CGT <Addr|Reg> // Call if Greater Than
+CGE <Addr|Reg> // Call if Greater Than Equal
+CNG <Addr|Reg> // Call if Not Greater Than
+
+CEZ <Addr|Reg> // Call if Zero
+COF <Addr|Reg> // Call if Overflow
+CCR <Addr|Reg> // Call if Carry
+
+// Cond Return
+REQ // Return if EQ
+RNE // Return if Not EQ
+RLT // Return if Less Than
+RLE // Return if Less Than Equal
+RNL // Return if Not Less Than
+RGT // Return if Greater Than
+RGE // Return if Greater Than Equal
+RNG // Return if Not Greater Than
+
+REZ // Return if Zero
+ROF // Return if Overflow
+RCR // Return if Carry
