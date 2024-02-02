@@ -1,3 +1,4 @@
+use crate::helium::instructions::AsmInstruction;
 
 pub enum TokenKind {
     Newline,
@@ -13,9 +14,15 @@ pub enum TokenKind {
     Integer,
 }
 
+pub enum ValueKind {
+    Instruction(AsmInstruction),
+    Integer(u16), // u16 for future support.
+    Word(String)
+}
+
 pub struct Token {
     kind: TokenKind,
-    value: Option<String>,
+    value: Option<ValueKind>,
     // For Debug/Error report purposes
     file: Option<String>,
     line: Option<u32>,
@@ -25,7 +32,7 @@ pub struct Token {
 impl Token {
     pub fn new(
         token_kind: TokenKind,
-        value: Option<String>,
+        value: Option<ValueKind>,
         file: Option<String>,
         line: Option<u32>,
         char: Option<u32>
@@ -50,7 +57,7 @@ impl Token {
         }
     }
 
-    pub fn with_value(token_kind: TokenKind, value: String) -> Self {
+    pub fn with_value(token_kind: TokenKind, value: ValueKind) -> Self {
         Self {
             kind: token_kind,
             value: Some(value),
@@ -72,7 +79,7 @@ impl Token {
         self
     }
 
-    pub fn set_value(mut self, value: String) -> Self {
+    pub fn set_value(mut self, value: ValueKind) -> Self {
         self.value = Some(value);
         self
     }
