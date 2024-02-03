@@ -4,7 +4,7 @@ use crate::helium::errors::Error;
 use crate::helium::errors::Error::{ParseError, UnexpectedToken};
 use crate::helium::instructions::AsmInstruction;
 use crate::helium::tokens::{Token, ValueKind};
-use crate::helium::tokens::TokenKind::{BracesClose, BracesOpen, Comma, ConstantDeclaration, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
+use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
 use crate::helium::tokens::ValueKind::Word;
 
 pub struct Lexer<'a> {
