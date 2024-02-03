@@ -1,0 +1,153 @@
+use std::iter::Peekable;
+use std::num::ParseIntError;
+use std::str::{Chars, FromStr};
+use crate::helium::errors::Error;
+use crate::helium::errors::Error::{ParseError, UnexpectedToken};
+use crate::helium::tokens::Token;
+use crate::helium::tokens::TokenKind::{Comma, Newline, SemiColon};
+
+pub struct Lexer<'a> {
+    source: Peekable<Chars<'a>>
+}
+
+impl <'a> Lexer<'a> {
+    pub fn new(source: &'a String) -> Self {
+        let chars: Peekable<Chars<'a>> = source.chars().peekable();
+        Self {
+            source: chars
+        }
+    }
+    pub fn lex(&mut self) -> Result<Vec<Token>, Vec<Error>> {
+        let mut tokens : Vec<Token> = vec![];
+        let mut errors : Vec<Error> = vec![];
+
+        while let Some(_) = self.source.peek() {
+            match self.next_token() {
+                Ok(token) => {
+                    match token {
+                        None => {/* how */ }
+                        Some(t) => tokens.push(t)
+                    }
+                }
+                Err(err) => {
+                    for error in err { errors.push(error) }
+                }
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+        
+        Ok(tokens)
+    }
+
+    fn next_token(&mut self) -> Result<Option<Token>, Vec<Error>> {
+
+        self.consume_whitespaces();
+
+        let next_token = self.source.peek();
+        if next_token.is_none() { return Ok(None) }
+
+        let next = self.source.next().unwrap();
+
+
+        return Ok(Some(
+            match next {
+            '\n' => { Token::from_kind(Newline) }
+            ';' => { Token::from_kind(SemiColon) }
+            ',' => { Token::from_kind(Comma) }
+            '-' => {
+                // parse num as negative, then convert to u8 eq
+                Token::from_kind(Comma)
+            }
+            '/' => {
+                let after = self.source.peek();
+                if after != Some(&'/') {
+                    return Err(vec![UnexpectedToken]);
+                }
+
+                while let Some(ch) = self.source.peek() {
+                    if ch == &'\n' { break; }
+                    self.source.next();
+                }
+                if self.source.peek() == None { return Ok(None); }
+
+                Token::from_kind(Newline)
+            }
+            '$' => {
+                // Register prefix
+                Token::from_kind(Comma)
+
+            }
+            first => {
+                let word = self.parse_word(Some(first));
+
+
+                Token::from_kind(Comma)
+            }
+        }
+        ))
+    }
+
+    fn parse_word(&mut self, start_char : Option<char>) -> Result<String, Error> {
+        let mut word = String::new();
+        if start_char.is_some() {
+            if !Self::is_const_compatible(&start_char.unwrap()) {
+                return Err(ParseError)
+            }
+            word.push(start_char.unwrap())
+        }
+
+        while let Some(ch) = self.source.peek() {
+            if &ch.is_whitespace() { break; }
+            if Self::is_const_compatible(ch) {
+                word.push(self.source.next().unwrap())
+            } else {
+                Err(ParseError)
+            }
+        }
+
+        Ok(word)
+    }
+
+    fn consume_whitespaces(&mut self) {
+        let mut next = self.source.peek();
+        while next.is_some() && next.unwrap().is_whitespace() && next.unwrap() != &'\n' {
+            self.source.next();
+            next = self.source.peek();
+        }
+    }
+
+    fn is_const_compatible(ch : &char) -> bool {
+        ch.is_alphanumeric() || ch == &'_'
+    }
+
+    fn parse_int(source: &str) -> Result<u16, Error>{
+        if source.starts_with("0x") {
+            let mut val = source.replace("0x", "");
+            val = val.replace("_", "");
+            let res = u16::from_str_radix(&val, 16);
+            match res {
+                Ok(res) => Ok(res),
+                Err(_) => Err(ParseError)
+            }
+        }
+        else if source.starts_with("0b") {
+            let mut val = source.replace("0b", "");
+            val = val.replace("_", "");
+            let res = u16::from_str_radix(&val, 2);
+            match res {
+                Ok(res) => Ok(res),
+                Err(_) => Err(ParseError)
+            }
+        } else {
+            let val = source.replace("_", "");
+            let res = u16::from_str(&val);
+            match res {
+                Ok(res) => Ok(res),
+                Err(_) => Err(ParseError)
+            }
+        }
+    }
+}

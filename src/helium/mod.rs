@@ -1,3 +1,4 @@
-mod tokens;
-mod instructions;
-mod lexer;
+pub mod tokens;
+pub mod instructions;
+pub mod lexer;
+pub mod errors;

@@ -1,5 +1,6 @@
 use crate::helium::instructions::AsmInstruction;
 
+#[derive(Debug)]
 pub enum TokenKind {
     Newline,
     Comma,
@@ -14,12 +15,14 @@ pub enum TokenKind {
     Integer,
 }
 
+#[derive(Debug)]
 pub enum ValueKind {
     Instruction(AsmInstruction),
     Integer(u16), // u16 for future support.
     Word(String)
 }
 
+#[derive(Debug)]
 pub struct Token {
     kind: TokenKind,
     value: Option<ValueKind>,
