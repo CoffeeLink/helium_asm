@@ -1,10 +1,11 @@
 use std::iter::Peekable;
-use std::num::ParseIntError;
 use std::str::{Chars, FromStr};
 use crate::helium::errors::Error;
 use crate::helium::errors::Error::{ParseError, UnexpectedToken};
-use crate::helium::tokens::Token;
-use crate::helium::tokens::TokenKind::{Comma, Newline, SemiColon};
+use crate::helium::instructions::AsmInstruction;
+use crate::helium::tokens::{Token, ValueKind};
+use crate::helium::tokens::TokenKind::{BracesClose, BracesOpen, Comma, ConstantDeclaration, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
+use crate::helium::tokens::ValueKind::Word;
 
 pub struct Lexer<'a> {
     source: Peekable<Chars<'a>>
@@ -59,7 +60,22 @@ impl <'a> Lexer<'a> {
             ',' => { Token::from_kind(Comma) }
             '-' => {
                 // parse num as negative, then convert to u8 eq
-                Token::from_kind(Comma)
+                let word = match self.parse_word(None) {
+                    Ok(w) => w,
+                    Err(e) => {
+                        return Err(vec![e])
+                    }
+                };
+
+                let num = Self::parse_int(&word, true);
+                match num {
+                    Ok(n) => {
+                        Token::with_value(Integer, ValueKind::Integer(n))
+                    }
+                    Err(e) => {
+                        return Err(vec![e]);
+                    }
+                }
             }
             '/' => {
                 let after = self.source.peek();
@@ -77,14 +93,41 @@ impl <'a> Lexer<'a> {
             }
             '$' => {
                 // Register prefix
-                Token::from_kind(Comma)
-
+                let word = match self.parse_word(None) {
+                    Ok(w) => w,
+                    Err(e) => {
+                        return Err(vec![e])
+                    }
+                };
+                Token::with_value(Register, Word(word))
             }
             first => {
-                let word = self.parse_word(Some(first));
+                let word = match self.parse_word(Some(first)) {
+                    Ok(w) => w,
+                    Err(e) => {
+                        return Err(vec![e])
+                    }
+                };
 
-
-                Token::from_kind(Comma)
+                if let Some(ins) = AsmInstruction::match_instruction(&word) {
+                    // Instruction token
+                    Token::with_value(Instruction, ValueKind::Instruction(ins))
+                }
+                else if first.is_numeric() {
+                    let num = match Self::parse_int(&word, false) {
+                        Ok(n) => n,
+                        Err(e) => {
+                            return Err(vec![e]);
+                        }
+                    };
+                    Token::with_value(Integer, ValueKind::Integer(num))
+                } else if word.ends_with(":") {
+                    Token::with_value(Label, Word(word.replace(":", "")))
+                } else if word == "const" || word == "CONST" {
+                    Token::from_kind(ConstantDeclaration)
+                } else {
+                    Token::with_value(Identifier, Word(word))
+                }
             }
         }
         ))
@@ -94,20 +137,19 @@ impl <'a> Lexer<'a> {
         let mut word = String::new();
         if start_char.is_some() {
             if !Self::is_const_compatible(&start_char.unwrap()) {
-                return Err(ParseError)
+                return Err(ParseError(format!("Incompatible char: '{}'", start_char.unwrap())))
             }
             word.push(start_char.unwrap())
         }
 
         while let Some(ch) = self.source.peek() {
-            if &ch.is_whitespace() { break; }
+            if ch.is_whitespace() || ch == &';' || ch == &',' { break; }
             if Self::is_const_compatible(ch) {
                 word.push(self.source.next().unwrap())
             } else {
-                Err(ParseError)
+                return Err(ParseError(format!("Incompatible char: '{}'", ch)))
             }
         }
-
         Ok(word)
     }
 
@@ -120,17 +162,17 @@ impl <'a> Lexer<'a> {
     }
 
     fn is_const_compatible(ch : &char) -> bool {
-        ch.is_alphanumeric() || ch == &'_'
+        ch.is_alphanumeric() || ch == &'_' || ch == &':'
     }
 
-    fn parse_int(source: &str) -> Result<u16, Error>{
+    fn parse_int(source: &str, neg : bool) -> Result<u16, Error>{
         if source.starts_with("0x") {
             let mut val = source.replace("0x", "");
             val = val.replace("_", "");
             let res = u16::from_str_radix(&val, 16);
             match res {
                 Ok(res) => Ok(res),
-                Err(_) => Err(ParseError)
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val)))
             }
         }
         else if source.starts_with("0b") {
@@ -139,14 +181,16 @@ impl <'a> Lexer<'a> {
             let res = u16::from_str_radix(&val, 2);
             match res {
                 Ok(res) => Ok(res),
-                Err(_) => Err(ParseError)
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val)))
             }
         } else {
             let val = source.replace("_", "");
             let res = u16::from_str(&val);
             match res {
-                Ok(res) => Ok(res),
-                Err(_) => Err(ParseError)
+                Ok(res) => {
+                    if neg { Ok(!res + 1)} else { Ok(res) }
+                },
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val)))
             }
         }
     }

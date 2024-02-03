@@ -6,12 +6,12 @@ pub enum TokenKind {
     Comma,
     SemiColon,
 
+    Instruction,
     Identifier,
     Label,
-    Constant,
+    ConstantDeclaration,
 
     Register,
-    RegisterContent,
     Integer,
 }
 

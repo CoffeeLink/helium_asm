@@ -3,7 +3,6 @@ use std::process::exit;
 use helium_asm::Config;
 use helium_asm::helium::errors::Error;
 use helium_asm::helium::lexer::Lexer;
-use helium_asm::helium::tokens::Token;
 
 fn main() {
     let conf = Config::from_args()
