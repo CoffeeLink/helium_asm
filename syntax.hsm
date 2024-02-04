@@ -24,11 +24,6 @@
 // constants cannot be redeclared and can only be used after declaration.
 // Note: its recommended to declare all constants at the start of the script.
 
-// Arguments and their types
-// some instructions might have the capability to use the register defined by another register value.
-// this can be done with [<Register>]
-// Note: separating arguments with the ',' isn't necessary.
-
 // Directives
 // All Directives are declared with a #<Name> [<Args>];
 // Current Directives:
