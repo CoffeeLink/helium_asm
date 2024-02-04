@@ -1,7 +1,9 @@
+use std::fmt::{Display, Formatter};
 use crate::helium::instructions::AsmInstruction;
 
 #[derive(Debug)]
 pub enum TokenKind {
+    // These tokens will just be eaten by the parser so its only for syntax enforcing
     Newline,
     Comma,
     SemiColon,
@@ -10,6 +12,7 @@ pub enum TokenKind {
     Identifier,
     Label,
     ConstantDeclaration,
+    Directive,
 
     Register,
     Integer,
@@ -85,5 +88,15 @@ impl Token {
     pub fn set_value(mut self, value: ValueKind) -> Self {
         self.value = Some(value);
         self
+    }
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.value.is_some() {
+            write!(f, "{:?}: {:?}", self.kind, self.value.as_ref().unwrap())
+        } else {
+            write!(f, "{:?}", self.kind)
+        }
     }
 }

@@ -83,9 +83,8 @@ impl <'a> Lexer<'a> {
                     return Err(vec![UnexpectedToken]);
                 }
 
-                while let Some(ch) = self.source.peek() {
-                    if ch == &'\n' { break; }
-                    self.source.next();
+                while let Some(ch) = self.source.next() {
+                    if ch == '\n' { break; }
                 }
                 if self.source.peek() == None { return Ok(None); }
 

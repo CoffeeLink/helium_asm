@@ -20,7 +20,9 @@ fn main() {
         }
     };
 
-    println!("{:?}", tokens)
+    for token in tokens {
+        println!("{}", token);
+    }
 }
 
 fn display_errors(errors : Vec<Error>) {
