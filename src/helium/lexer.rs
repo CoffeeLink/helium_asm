@@ -31,7 +31,7 @@ impl <'a> Lexer<'a> {
                     }
                 }
                 Err(err) => {
-                    for error in err { errors.push(error) }
+                    errors.push(err)
                 }
             }
         }
@@ -43,7 +43,7 @@ impl <'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    fn next_token(&mut self) -> Result<Option<Token>, Vec<Error>> {
+    fn next_token(&mut self) -> Result<Option<Token>, Error> {
 
         self.consume_whitespaces();
 
@@ -63,7 +63,7 @@ impl <'a> Lexer<'a> {
                 let word = match self.parse_word(None) {
                     Ok(w) => w,
                     Err(e) => {
-                        return Err(vec![e])
+                        return Err(e)
                     }
                 };
 
@@ -73,14 +73,14 @@ impl <'a> Lexer<'a> {
                         Token::with_value(Integer, ValueKind::Integer(n))
                     }
                     Err(e) => {
-                        return Err(vec![e]);
+                        return Err(e);
                     }
                 }
             }
             '/' => {
                 let after = self.source.peek();
                 if after != Some(&'/') {
-                    return Err(vec![UnexpectedToken]);
+                    return Err(UnexpectedToken);
                 }
 
                 while let Some(ch) = self.source.next() {
@@ -95,7 +95,7 @@ impl <'a> Lexer<'a> {
                 let word = match self.parse_word(None) {
                     Ok(w) => w,
                     Err(e) => {
-                        return Err(vec![e])
+                        return Err(e)
                     }
                 };
                 Token::with_value(Register, Word(word))
@@ -105,12 +105,12 @@ impl <'a> Lexer<'a> {
                 let word = match self.parse_word(None) {
                     Ok(w) => w,
                     Err(e) => {
-                        return Err(vec![e])
+                        return Err(e)
                     }
                 };
                 // Check if its longer than 0 chars
                 if word.len() == 0 {
-                    return Err(vec![ParseError("Directive has invalid name".to_string())])
+                    return Err(ParseError("Directive has invalid name".to_string()))
                 }
 
                 Token::with_value(Directive, Word(word))
@@ -119,7 +119,7 @@ impl <'a> Lexer<'a> {
                 let word = match self.parse_word(Some(first)) {
                     Ok(w) => w,
                     Err(e) => {
-                        return Err(vec![e])
+                        return Err(e)
                     }
                 };
 
@@ -131,7 +131,7 @@ impl <'a> Lexer<'a> {
                     let num = match Self::parse_int(&word, false) {
                         Ok(n) => n,
                         Err(e) => {
-                            return Err(vec![e]);
+                            return Err(e);
                         }
                     };
                     Token::with_value(Integer, ValueKind::Integer(num))
@@ -167,7 +167,9 @@ impl <'a> Lexer<'a> {
                 if Self::is_const_compatible(ch) {
                     word.push(self.source.next().unwrap())
                 } else {
-                    return Err(ParseError(format!("Incompatible char: '{}'", ch)))
+                    let cha = ch.clone();
+                    self.source.next(); // Consume so it doesnt give 2 errors
+                    return Err(ParseError(format!("Incompatible char: '{}'", cha)))
                 }
             } else {
                 if ch == &'"' {
