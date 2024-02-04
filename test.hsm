@@ -4,7 +4,7 @@
 const L 102;
 const n -10;
 main:
-    mov $A, 1; // Curr 
+    mov $A, 1; // Curr
     mov $B, 0; // Last
 loop:
     ADD $A, $B, $C;
@@ -12,6 +12,7 @@ loop:
     MOV $A, $C;
 
     MOV $X, $A; // Export to X
+    mov $1, 100; // $<id> test
 
     JMP loop;
 how:

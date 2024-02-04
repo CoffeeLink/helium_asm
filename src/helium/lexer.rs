@@ -98,7 +98,16 @@ impl <'a> Lexer<'a> {
                         return Err(e)
                     }
                 };
-                Token::with_value(Register, Word(word))
+                // Check if its a number
+                if word.chars().next().unwrap().is_numeric() {
+                    let i_val = match Self::parse_int(&word, false) {
+                        Ok(i) => i,
+                        Err(e) => {return Err(e)}
+                    };
+                    Token::with_value(Register, ValueKind::Integer(i_val))
+                } else { // its not a number so its an identifier.
+                    Token::with_value(Register, Word(word))
+                }
             }
             '#' => {
                 // Directive prefix.

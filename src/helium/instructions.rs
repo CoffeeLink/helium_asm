@@ -138,3 +138,16 @@ impl AsmInstruction {
         }
     }
 }
+
+pub struct Instruction {
+    kind : AsmInstruction,
+    args : Vec<Argument>
+}
+
+pub enum Argument {
+    Register(u16),
+    RegisterIdentifier(String),
+
+    Immediate(u16),
+    ImmediateIdentifier(String)
+}
