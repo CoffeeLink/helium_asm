@@ -26,7 +26,7 @@ impl <'a> Lexer<'a> {
             match self.next_token() {
                 Ok(token) => {
                     match token {
-                        None => {/* how */ }
+                        None => { /* how */ }
                         Some(t) => tokens.push(t)
                     }
                 }
