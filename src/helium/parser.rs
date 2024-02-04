@@ -26,9 +26,7 @@ pub struct Parser {
 }
 impl Parser {
     pub fn new(tokens : Vec<Token>) -> Self {
-        Self {
-            tokens
-        }
+        Self { tokens }
     }
     pub fn parse(mut self) -> Result<ProgramTree, Vec<Error>> {
         todo!()
