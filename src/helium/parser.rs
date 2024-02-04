@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use crate::helium::errors::Error;
-use crate::helium::instructions::AsmInstruction;
 use crate::helium::tokens::Token;
 
 pub enum ConstantType {
