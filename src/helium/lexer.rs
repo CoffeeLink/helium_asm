@@ -4,7 +4,7 @@ use crate::helium::errors::Error;
 use crate::helium::errors::Error::{ParseError, UnexpectedToken};
 use crate::helium::instructions::AsmInstruction;
 use crate::helium::tokens::{Token, ValueKind};
-use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
+use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Directive, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
 use crate::helium::tokens::ValueKind::Word;
 
 pub struct Lexer<'a> {
@@ -100,6 +100,21 @@ impl <'a> Lexer<'a> {
                 };
                 Token::with_value(Register, Word(word))
             }
+            '#' => {
+                // Directive prefix.
+                let word = match self.parse_word(None) {
+                    Ok(w) => w,
+                    Err(e) => {
+                        return Err(vec![e])
+                    }
+                };
+                // Check if its longer than 0 chars
+                if word.len() == 0 {
+                    return Err(vec![ParseError("Directive has invalid name".to_string())])
+                }
+
+                Token::with_value(Directive, Word(word))
+            }
             first => {
                 let word = match self.parse_word(Some(first)) {
                     Ok(w) => w,
@@ -134,20 +149,35 @@ impl <'a> Lexer<'a> {
 
     fn parse_word(&mut self, start_char : Option<char>) -> Result<String, Error> {
         let mut word = String::new();
+        let mut is_string_format = false;
+
         if start_char.is_some() {
-            if !Self::is_const_compatible(&start_char.unwrap()) {
+            if &start_char.unwrap() == &'"' {
+                is_string_format = true
+            } else if !Self::is_const_compatible(&start_char.unwrap()) {
                 return Err(ParseError(format!("Incompatible char: '{}'", start_char.unwrap())))
+            } else {
+                word.push(start_char.unwrap())
             }
-            word.push(start_char.unwrap())
         }
 
         while let Some(ch) = self.source.peek() {
-            if ch.is_whitespace() || ch == &';' || ch == &',' { break; }
-            if Self::is_const_compatible(ch) {
-                word.push(self.source.next().unwrap())
+            if !is_string_format {
+                if ch.is_whitespace() || ch == &';' || ch == &',' { break; }
+                if Self::is_const_compatible(ch) {
+                    word.push(self.source.next().unwrap())
+                } else {
+                    return Err(ParseError(format!("Incompatible char: '{}'", ch)))
+                }
             } else {
-                return Err(ParseError(format!("Incompatible char: '{}'", ch)))
+                if ch == &'"' {
+                    self.source.next(); // Consume the "
+                    break;
+                }
+
+                word.push(self.source.next().unwrap());
             }
+
         }
         Ok(word)
     }
