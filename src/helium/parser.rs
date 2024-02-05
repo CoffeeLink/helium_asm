@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::fs::read_to_string;
 use std::iter::Peekable;
+use std::path::Path;
 use std::slice::Iter;
 use crate::helium::errors::Error;
-use crate::helium::errors::Error::{MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
+use crate::helium::errors::Error::{ConstantCollision, IncludeError, MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
 use crate::helium::instructions::{Argument, AsmInstruction, Instruction};
+use crate::helium::lexer::Lexer;
 use crate::helium::parser::ConstantType::{Label, Unknown, Value};
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Identifier, Integer, Newline, Register, SemiColon};
@@ -15,7 +18,7 @@ pub enum ConstantType {
     Unknown
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ProgramTree {
     pub constants : HashMap<String, ConstantType>,
     pub segments : Vec<ProgramSegment>
@@ -25,7 +28,7 @@ impl ProgramTree {
         Self { constants: Default::default(), segments: vec![] }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProgramSegment {
     name : String,
     origin : Option<u32>,
@@ -48,7 +51,7 @@ impl ProgramSegment {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProgramElement {
     Instruction(Instruction),
     Identifier(String),
@@ -158,7 +161,6 @@ impl <'a> Parser<'a> {
                     // if not, create a new label with skipto_<skipto_id>_addr and set org
                     let directive_name = token.clone().value.unwrap().get_word_value().unwrap();
                     match directive_name.as_str() {
-                        "entry" => {}
                         "no_predec" => {pre_dec_allowed = false;}
                         "skipto" => {
                             // get the addr(can only be Imm Int) than check if there is a label after
@@ -222,8 +224,85 @@ impl <'a> Parser<'a> {
                                 current_segment.origin = Some(u32::from(addr));
                             }
                         }
-                        "pre_load" => {}
-                        "include" => {}
+                        "include" => {
+                            // check if next is identifier.
+                            let next = match self.tokens.next() {
+                                Some(n) => n,
+                                None => {
+                                    errors.push(UnexpectedEOF);
+                                    continue;
+                                }
+                            };
+                            if next.kind != Identifier {
+                                errors.push(
+                                    UnexpectedToken(format!("Include needs Identifier, got: {:?}", next.kind))
+                                );
+                                continue;
+                            }
+
+                            let file_name = next.value.clone().unwrap().get_word_value().unwrap();
+
+                            // try load file
+                            let file_path = Path::new(&file_name);
+                            if !file_path.is_file() {
+                                errors.push(IncludeError(
+                                    format!("Could Not find file: {}", &file_name)
+                                ))
+                            }
+                            // load file
+                            let contents = match read_to_string(file_path) {
+                                Ok(c) => c,
+                                Err(e) => {
+                                    errors.push(IncludeError(
+                                        format!("Could Not read file: {}", e)
+                                    ));
+                                    continue;
+                                }
+                            };
+                            // parse file
+
+                            let p_tokens = match Lexer::new(&contents).lex() {
+                                Ok(a) => a,
+                                Err(_) => {
+                                    errors.push(IncludeError(
+                                        format!("Errors found in file '{}'", file_name)
+                                    ));
+                                    continue;
+                                }
+                            };
+                            let p_pars = Self::new(&p_tokens).parse();
+                            let mut p_tree = match p_pars {
+                                Ok(p) => p,
+                                Err(_) => {
+                                    errors.push(IncludeError(
+                                        format!("Errors found in file '{}'", file_name)
+                                    ));
+                                    continue;
+                                }
+                            };
+
+                            // handle constant collisions
+                            let mut cf = false;
+                            for (k, _) in &p_tree.constants {
+                                if tree.constants.contains_key(k) {
+                                    cf = true;
+                                    errors.push(ConstantCollision(
+                                        format!("Colliding constant found: {}", k)
+                                    ));
+                                }
+                            }
+                            if cf { continue; }
+
+                            for (k,v) in p_tree.clone().constants {
+                                tree.constants.insert(k, v);
+                            }
+                            // push all segments to the end.
+
+                            p_tree.segments[0].name = format!("__{}__entry", file_name);
+                            for segment in p_tree.segments {
+                                tree.segments.push(segment);
+                            }
+                        }
 
                         _ => { // unknown directive
                             errors.push(UnknownDirective(

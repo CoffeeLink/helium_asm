@@ -27,10 +27,8 @@
 // Directives
 // All Directives are declared with a #<Name> [<Args>];
 // Current Directives:
-//  #entry <label_name>; // The execution will start here. Note: the label must be a label and valid.
 //  #no_predec; // this must tells the assembler that no constants should be predefined.
 //  #skipto <addr>; // the program will continue at the specified address. Note: constants can also be used here.
-//  #pre_load <file_name>; // preloads a constant table from another file. Note: Not Implemented.
 //  #include <file_name>; // includes anther asm file. Note: other entry-points will be ignored, unless no entry is defined.
 
 // Instructions

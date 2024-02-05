@@ -1,5 +1,5 @@
 // a basic fib program as an example.
-// #include "syntax.hsm"
+#include "consts.hsm"
 
 const L 102;
 const n -10;

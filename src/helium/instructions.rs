@@ -138,7 +138,7 @@ impl AsmInstruction {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instruction {
     pub kind : AsmInstruction,
     pub args : Vec<Argument>
@@ -149,7 +149,7 @@ impl Instruction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Argument {
     Register(u16),
     RegisterIdentifier(String),

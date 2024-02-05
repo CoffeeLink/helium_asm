@@ -7,5 +7,7 @@ pub enum Error {
     MismatchedTypes(String),
     UnknownIdentifier(String),
     UnknownDirective(String),
-    SystemError(String)
+    SystemError(String),
+    IncludeError(String),
+    ConstantCollision(String),
 }
