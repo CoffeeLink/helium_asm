@@ -1,8 +1,10 @@
 // a basic fib program as an example.
-#include "syntax.hsm"
+// #include "syntax.hsm"
 
 const L 102;
 const n -10;
+
+SIA 10 ;
 main:
     mov $A, 1; // Curr
     mov $B, 0; // Last
@@ -17,4 +19,3 @@ loop:
     JMP loop;
 how:
     HLT; // This isn't should never be reachable.
-    lmao;

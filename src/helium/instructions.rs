@@ -138,12 +138,18 @@ impl AsmInstruction {
         }
     }
 }
-
+#[derive(Debug)]
 pub struct Instruction {
-    kind : AsmInstruction,
-    args : Vec<Argument>
+    pub kind : AsmInstruction,
+    pub args : Vec<Argument>
+}
+impl Instruction {
+    pub fn new(kind: AsmInstruction) -> Self {
+        Self { kind, args: vec![] }
+    }
 }
 
+#[derive(Debug)]
 pub enum Argument {
     Register(u16),
     RegisterIdentifier(String),

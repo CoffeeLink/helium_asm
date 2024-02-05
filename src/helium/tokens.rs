@@ -26,15 +26,21 @@ pub enum ValueKind {
     Word(String)
 }
 impl ValueKind {
-    pub fn get_word_value(mut self) -> Option<String>{
+    pub fn get_word_value(self) -> Option<String>{
         match self {
             Word(w) => {Some(w)}
             _ => None
         }
     }
-    pub fn get_int_value(mut self) -> Option<u16> {
+    pub fn get_int_value(self) -> Option<u16> {
         match self {
             ValueKind::Integer(i) => Some(i),
+            _ => None
+        }
+    }
+    pub fn get_instruction_code(self) -> Option<AsmInstruction> {
+        match self {
+            ValueKind::Instruction(i) => Some(i),
             _ => None
         }
     }
