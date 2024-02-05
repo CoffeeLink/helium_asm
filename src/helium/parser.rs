@@ -65,9 +65,13 @@ impl <'a> Parser<'a> {
     pub fn parse(mut self) -> Result<ProgramTree, Vec<Error>> {
         let mut tree = ProgramTree{ constants: Default::default(), segments: vec![] };
         let mut errors: Vec<Error> = vec![];
+
         // create root segment
         let mut current_segment = ProgramSegment::new("entry");
+
+        //config and other stuff
         let mut last_auto_id: u32 = 0;
+        let mut pre_dec_allowed = true;
 
         while let Some(token) = self.tokens.next() {
             match token.kind {
@@ -155,7 +159,7 @@ impl <'a> Parser<'a> {
                     let directive_name = token.clone().value.unwrap().get_word_value().unwrap();
                     match directive_name.as_str() {
                         "entry" => {}
-                        "no_predec" => {}
+                        "no_predec" => {pre_dec_allowed = false;}
                         "skipto" => {
                             // get the addr(can only be Imm Int) than check if there is a label after
                             // if there is a label, create the new segment and set its origin to the addr.
@@ -233,7 +237,7 @@ impl <'a> Parser<'a> {
                         .value.unwrap()
                         .get_instruction_code().unwrap();
 
-                    match self.parse_instruction(instruction_code) {
+                    match self.parse_instruction(instruction_code, &mut tree) {
                         Ok(i) => current_segment.elements.push(ProgramElement::Instruction(i)),
                         Err(e) => {
                             errors.push(e);
@@ -244,6 +248,36 @@ impl <'a> Parser<'a> {
         }
         // add final segment
         tree.segments.push(current_segment);
+
+        if pre_dec_allowed {
+            tree.constants.insert("r0".to_string(), Value(0));
+            tree.constants.insert("rA".to_string(), Value(0));
+            tree.constants.insert("A".to_string(), Value(0));
+
+            tree.constants.insert("r1".to_string(), Value(1));
+            tree.constants.insert("rB".to_string(), Value(1));
+            tree.constants.insert("B".to_string(), Value(1));
+
+            tree.constants.insert("r2".to_string(), Value(2));
+            tree.constants.insert("rC".to_string(), Value(2));
+            tree.constants.insert("C".to_string(), Value(2));
+
+            tree.constants.insert("r3".to_string(), Value(3));
+            tree.constants.insert("rX".to_string(), Value(3));
+            tree.constants.insert("X".to_string(), Value(3));
+
+            tree.constants.insert("r4".to_string(), Value(4));
+            tree.constants.insert("rY".to_string(), Value(4));
+            tree.constants.insert("Y".to_string(), Value(4));
+
+            tree.constants.insert("r5".to_string(), Value(5));
+            tree.constants.insert("rF".to_string(), Value(5));
+            tree.constants.insert("F".to_string(), Value(5));
+
+            tree.constants.insert("r6".to_string(), Value(6));
+            tree.constants.insert("rSP".to_string(), Value(6));
+            tree.constants.insert("SP".to_string(), Value(6));
+        }
 
         // check for any missing constant definitions.
         for (key, value) in tree.constants.clone() {
@@ -260,7 +294,7 @@ impl <'a> Parser<'a> {
 
         Ok(tree)
     }
-    fn parse_instruction(&mut self, instruction: AsmInstruction) -> Result<Instruction, Error> {
+    fn parse_instruction(&mut self, instruction: AsmInstruction, tree : &mut ProgramTree) -> Result<Instruction, Error> {
         let mut ins = Instruction::new(instruction);
         // consume arguments until a newline or a semicolon.
         // error on invalid token types like instruction, directive etc.
@@ -286,6 +320,11 @@ impl <'a> Parser<'a> {
                 }
                 Identifier => {
                     let ident = token.value.unwrap().get_word_value().unwrap();
+
+                    if !tree.constants.contains_key(&ident) {
+                        tree.constants.insert(ident.clone(), Unknown);
+                    }
+
                     ins.args.push(
                         Argument::ImmediateIdentifier(ident)
                     )
@@ -299,6 +338,9 @@ impl <'a> Parser<'a> {
                             )
                         }
                         ValueKind::Word(val) => {
+                            if !tree.constants.contains_key(&val) {
+                                tree.constants.insert(val.clone(), Unknown);
+                            }
                             ins.args.push(
                                 Argument::RegisterIdentifier(val)
                             )
