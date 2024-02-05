@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 use std::slice::Iter;
 use crate::helium::errors::Error;
-use crate::helium::errors::Error::{MismatchedTypes, UnexpectedToken, UnknownDirective, UnknownIdentifier};
+use crate::helium::errors::Error::{MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
 use crate::helium::instructions::{Argument, AsmInstruction, Instruction};
 use crate::helium::parser::ConstantType::{Label, Unknown, Value};
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
@@ -155,7 +155,20 @@ impl <'a> Parser<'a> {
                     match directive_name.as_str() {
                         "entry" => {}
                         "no_predec" => {}
-                        "skipto" => {}
+                        "skipto" => {
+                            // get the addr(can only be Imm Int) than check if there is a label after
+                            // if there is a label, create the new segment and set its origin to the addr.
+                            // if there is no label than create a new segment with the origin.
+
+                            /*
+                            let addr_token = match self.tokens.next() {
+                                Some(a) => a,
+                                None => {
+                                    errors.push(UnexpectedEOF)
+                                }
+                            };
+                            */
+                        }
                         "pre_load" => {}
                         "include" => {}
 
