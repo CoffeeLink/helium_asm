@@ -4,7 +4,7 @@
 const L 102;
 const n -10;
 
-SIA 10 ;
+#skipto 100;
 main:
     mov $A, 1; // Curr
     mov $B, 0; // Last
@@ -13,6 +13,7 @@ loop:
     MOV $B, $A;
     MOV $A, $C;
 
+    #skipto 150;
     MOV $X, $A; // Export to X
     mov $1, 100; // $<id> test
 

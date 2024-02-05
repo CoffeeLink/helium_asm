@@ -15,7 +15,7 @@ pub enum ConstantType {
     Unknown
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ProgramTree {
     pub constants : HashMap<String, ConstantType>,
     pub segments : Vec<ProgramSegment>
@@ -59,7 +59,7 @@ pub struct Parser<'a> {
     tokens : Peekable<Iter<'a, Token>>
 }
 impl <'a> Parser<'a> {
-    pub fn new(tokens : &'a Vec<Token>) -> Self {
+    pub fn new(tokens : &'a [Token]) -> Self {
         Self { tokens: tokens.iter().peekable() }
     }
     pub fn parse(mut self) -> Result<ProgramTree, Vec<Error>> {
@@ -67,17 +67,18 @@ impl <'a> Parser<'a> {
         let mut errors: Vec<Error> = vec![];
         // create root segment
         let mut current_segment = ProgramSegment::new("entry");
+        let mut last_auto_id: u32 = 0;
 
         while let Some(token) = self.tokens.next() {
             match token.kind {
-                TokenKind::Newline |
-                TokenKind::SemiColon |
-                TokenKind::Comma => {/* Do nothing just consume */}
+                Newline |
+                SemiColon |
+                Comma => {/* Do nothing just consume */}
 
                 ConstantDeclaration => {
                     // the one after needs to be a word
                     let next = self.tokens.next();
-                    if next.is_some() && &next.unwrap().kind != &Identifier {
+                    if next.is_some() && next.unwrap().kind != Identifier {
                         errors.push(MismatchedTypes(
                             format!("Identifier expected, found: {:?}", next.unwrap().kind)
                         ));
@@ -93,7 +94,7 @@ impl <'a> Parser<'a> {
 
                     // check for immediate.
                     let next = self.tokens.next();
-                    if next.is_some() && &next.unwrap().kind != &Integer {
+                    if next.is_some() && next.unwrap().kind != Integer {
                         errors.push(MismatchedTypes(
                             format!("Integer expected, found: {:?}", next.unwrap().kind)
                         ));
@@ -117,7 +118,7 @@ impl <'a> Parser<'a> {
                     tree.segments.push(current_segment);
                     current_segment = ProgramSegment::new(&name);
                 }
-                TokenKind::Identifier => {
+                Identifier => {
                     // put into consts as notfound and also put into curr seg
                     let key = token.clone()
                         .value.unwrap()
@@ -129,7 +130,7 @@ impl <'a> Parser<'a> {
                         ProgramElement::Identifier(key)
                     )
                 }
-                TokenKind::Integer => {
+                Integer => {
                     // also raw data
                     current_segment.elements.push(
                         ProgramElement::Immediate(token.clone()
@@ -138,7 +139,7 @@ impl <'a> Parser<'a> {
                         )
                     )
                 }
-                TokenKind::Register => {
+                Register => {
                     // this isn't allowed so raise error.
                     let reg_key = token.clone().value.unwrap();
                     errors.push(match reg_key {
@@ -160,14 +161,62 @@ impl <'a> Parser<'a> {
                             // if there is a label, create the new segment and set its origin to the addr.
                             // if there is no label than create a new segment with the origin.
 
-                            /*
+
                             let addr_token = match self.tokens.next() {
                                 Some(a) => a,
                                 None => {
-                                    errors.push(UnexpectedEOF)
+                                    errors.push(UnexpectedEOF);
+                                    continue;
                                 }
                             };
-                            */
+                            if addr_token.kind != Integer {
+                                errors.push(MismatchedTypes(
+                                    format!("Integer needed, but found: {:?}", addr_token.kind)
+                                ));
+                                continue;
+                            }
+                            let addr = addr_token.clone()
+                                .value.unwrap().get_int_value().unwrap();
+
+                            if self.tokens.peek().is_none() {
+                                errors.push(UnexpectedEOF);
+                                continue
+                            }
+                            // before looking for next token.
+                            // eat all "whitespace tokens" before looking for the label.
+                            while let Some(token) = self.tokens.peek() {
+                                if token.kind != SemiColon &&
+                                    token.kind != Comma &&
+                                    token.kind != Newline {
+                                    break;
+                                }
+                                self.tokens.next();
+                            }
+
+                            let next_token = self.tokens.peek().unwrap();
+
+                            if next_token.kind == TokenKind::Label {
+                                // create new segment with the labels name
+                                let name = next_token.value
+                                    .clone().unwrap()
+                                    .get_word_value().unwrap();
+
+                                tree.constants.insert(name.clone(), Label);
+
+                                // replace segment.
+                                tree.segments.push(current_segment);
+                                current_segment = ProgramSegment::new(&name);
+                                current_segment.origin = Some(u32::from(addr));
+
+                            } else {
+                                let name = format!("__auto_label_unnamed_segment_with_origin_{}:{}__", addr, last_auto_id);
+                                last_auto_id += 1;
+                                tree.constants.insert(name.clone(), Label);
+
+                                tree.segments.push(current_segment);
+                                current_segment = ProgramSegment::new(&name);
+                                current_segment.origin = Some(u32::from(addr));
+                            }
                         }
                         "pre_load" => {}
                         "include" => {}
