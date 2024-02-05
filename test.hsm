@@ -17,3 +17,4 @@ loop:
     JMP loop;
 how:
     HLT; // This isn't should never be reachable.
+    lmao;
