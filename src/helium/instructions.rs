@@ -1,6 +1,6 @@
 use crate::helium::instructions::AsmInstruction::{Add, AddWithCarry, And, BitCheck, Call, CallCarry, CallEquals, CallGreaterThan, CallGreaterThanEq, CallInterrupt, CallLessThan, CallLessThanEq, CallNotEquals, CallNotGreaterThan, CallNotLessThan, CallOverflow, CallZero, Compare, CompareSigned, Decrement, Halt, Increment, Jump, JumpCarry, JumpEquals, JumpGreaterThan, JumpGreaterThanEq, JumpLessThan, JumpLessThanEq, JumpNotEquals, JumpNotGreaterThan, JumpNotLessThan, JumpOverflow, JumpZero, Load, LoadProgramMemory, Move, Negative, NoOperation, Not, Or, Pop, Push, Reset, Return, ReturnCarry, ReturnEquals, ReturnGreaterThan, ReturnGreaterThanEq, ReturnLessThan, ReturnLessThanEq, ReturnNotEquals, ReturnNotGreaterThan, ReturnNotLessThan, ReturnOverflow, ReturnZero, SetBit, SetInterruptAddress, ShiftLeft, ShiftRight, Store, StoreProgramMemory, Sub, SubWithCarry, WaitUntilInterrupt, Xor};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum AsmInstruction {
     Halt,
     NoOperation,

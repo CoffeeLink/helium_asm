@@ -1,7 +1,8 @@
 use std::fmt::{Display, Formatter};
 use crate::helium::instructions::AsmInstruction;
+use crate::helium::tokens::ValueKind::Word;
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
     // These tokens will just be eaten by the parser so its only for syntax enforcing
     Newline,
@@ -18,21 +19,35 @@ pub enum TokenKind {
     Integer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ValueKind {
     Instruction(AsmInstruction),
     Integer(u16), // u16 for future support.
     Word(String)
 }
+impl ValueKind {
+    pub fn get_word_value(mut self) -> Option<String>{
+        match self {
+            Word(w) => {Some(w)}
+            _ => None
+        }
+    }
+    pub fn get_int_value(mut self) -> Option<u16> {
+        match self {
+            ValueKind::Integer(i) => Some(i),
+            _ => None
+        }
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    kind: TokenKind,
-    value: Option<ValueKind>,
+    pub kind: TokenKind,
+    pub value: Option<ValueKind>,
     // For Debug/Error report purposes
-    file: Option<String>,
-    line: Option<u32>,
-    char: Option<u32>
+    pub file: Option<String>,
+    pub line: Option<u32>,
+    pub char: Option<u32>
 }
 
 impl Token {

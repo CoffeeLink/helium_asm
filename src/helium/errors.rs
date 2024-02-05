@@ -1,6 +1,8 @@
 
 #[derive(Debug)]
 pub enum Error {
-    UnexpectedToken,
-    ParseError(String)
+    UnexpectedToken(String),
+    ParseError(String),
+    MismatchedTypes(String),
+
 }

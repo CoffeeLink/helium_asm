@@ -3,6 +3,7 @@ use std::process::exit;
 use helium_asm::Config;
 use helium_asm::helium::errors::Error;
 use helium_asm::helium::lexer::Lexer;
+use helium_asm::helium::parser::{Parser, ProgramTree};
 
 fn main() {
     let conf = Config::from_args()
@@ -20,9 +21,13 @@ fn main() {
         }
     };
 
-    for token in tokens {
-        println!("{}", token);
-    }
+    let parsed = match Parser::new(&tokens).parse() {
+        Ok(t) => {t}
+        Err(e) => {
+            display_errors(e);
+            exit(1);
+        }
+    };
 }
 
 fn display_errors(errors : Vec<Error>) {

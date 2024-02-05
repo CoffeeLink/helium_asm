@@ -80,7 +80,7 @@ impl <'a> Lexer<'a> {
             '/' => {
                 let after = self.source.peek();
                 if after != Some(&'/') {
-                    return Err(UnexpectedToken);
+                    return Err(UnexpectedToken("Unexpected '/'".to_string()));
                 }
 
                 while let Some(ch) = self.source.next() {
