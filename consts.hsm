@@ -1,2 +1,5 @@
-const lmao 10;
-const what 20;
+
+const La 39;
+
+main:
+MOV $A $B

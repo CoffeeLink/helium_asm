@@ -1,13 +1,18 @@
 use std::collections::{BTreeSet, HashMap};
+use std::fs::read_to_string;
 use std::iter::Peekable;
+use std::path::Path;
 use std::slice::Iter;
 use crate::helium::defaults::DEFAULT_CONSTS;
 use crate::helium::errors::Error;
-use crate::helium::errors::Error::{ConstantCollision, MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
+use crate::helium::errors::Error::{ConstantCollision, IncludeError, MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
 use crate::helium::instructions::{Argument, AsmInstruction, Instruction};
+use crate::helium::lexer::Lexer;
 use crate::helium::parser::ConstantType::{Label, Unknown, Value};
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Identifier, Integer, Newline, Register, SemiColon};
+
+//Note: this file is actual spaghetti that you can eat, use the tabs as sauce.
 
 #[derive(Copy, Clone, PartialOrd, PartialEq, Debug)]
 pub enum ConstantType {
@@ -18,14 +23,14 @@ pub enum ConstantType {
 
 #[derive(Debug, Default, Clone)]
 pub struct ProgramTree {
-    // what does this tree contain
     pub file_name : String,
     pub constants : HashMap<String, ConstantType>,
     pub segments : Vec<ProgramSegment>,
+
+    pub imports : BTreeSet<String>,
     // It seems like the better choice than HashSet
     // because i dont think there will be more than ~50 (this seems like a way to high number)
     // HashSet has a big array that usually never gets fully utilized.
-    pub imports : BTreeSet<String>
 }
 impl ProgramTree {
     pub fn new() -> Self {
@@ -40,28 +45,25 @@ impl ProgramTree {
 
         // check for constant collisions
         let mut const_collision_found = false;
-        for (key, _) in &other.constants {
-            if self.constants.contains_key(key) {
-                const_collision_found = true;
-                errors.push(ConstantCollision(
-                 format!("constant collision found in file: {}: {}", file_name,key)
-                ))
-            }
-        }
-        if const_collision_found {
-            return Err(errors);
-        }
+
+        let _ = &other.constants.keys().map(|k| { // Iter through all
+            if self.constants.contains_key(k) { return }
+            const_collision_found = true;
+            errors.push(ConstantCollision(
+                format!("constant collision found in file: {}: {}", file_name,k)
+            ))
+        });
+
+        if const_collision_found { return Err(errors); }
 
         // renames the entry point of the other. should never crash cuz the first segment is always there.
-        let name = other.segments.get(0).unwrap().name.clone();
-        other.segments.get_mut(0).unwrap().name = format!("__{}:{}__auto_renamed", file_name, name);
+        let name = other.segments[0].name.clone();
+        other.segments.get_mut(0).unwrap().name =
+            format!("__{}:{}__auto_renamed", file_name, name);
         
-        // take segments and constants
-
+        // take segments, constants and imports
         self.constants.extend(other.constants);
         self.segments.extend(other.segments);
-
-        // take new imports
         self.imports.extend(other.imports);
 
         // add as include.
@@ -101,15 +103,24 @@ pub enum ProgramElement {
 }
 #[derive(Debug)]
 pub struct Parser<'a> {
-    tokens : Peekable<Iter<'a, Token>>
+    tokens : Peekable<Iter<'a, Token>>,
+    file_name : String
 }
 impl <'a> Parser<'a> {
-    pub fn new(tokens : &'a [Token]) -> Self {
-        Self { tokens: tokens.iter().peekable() }
+    pub fn new(tokens : &'a [Token], file_name : String) -> Self {
+        Self { tokens: tokens.iter().peekable(), file_name }
     }
     pub fn parse(mut self, import_tree : Option<BTreeSet<String>>) -> Result<ProgramTree, Vec<Error>> {
         let mut tree = ProgramTree::new();
         let mut errors: Vec<Error> = vec![];
+        let mut imports : BTreeSet<String> = Default::default();
+
+        tree.file_name = self.file_name.clone();
+        tree.imports.insert(self.file_name.clone());
+
+        if let Some(t) = import_tree {
+            tree.imports.extend(t);
+        }
 
         // create root segment
         let mut current_segment = ProgramSegment::new("entry");
@@ -198,18 +209,13 @@ impl <'a> Parser<'a> {
                     })
                 }
                 TokenKind::Directive => {
-                    // check directive name and if its ths skipto diretive check if there is a label following
+                    // check directive name and if its ths skipto directive check if there is a label following
                     // if so, create that label with an origin of that skipto-s addr
                     // if not, create a new label with skipto_<skipto_id>_addr and set org
                     let directive_name = token.clone().value.unwrap().get_word_value().unwrap();
                     match directive_name.as_str() {
                         "no_predec" => {pre_dec_allowed = false;}
                         "skipto" => {
-                            // get the addr(can only be Imm Int) than check if there is a label after
-                            // if there is a label, create the new segment and set its origin to the addr.
-                            // if there is no label than create a new segment with the origin.
-
-
                             let addr_token = match self.tokens.next() {
                                 Some(a) => a,
                                 None => {
@@ -266,7 +272,20 @@ impl <'a> Parser<'a> {
                                 current_segment.origin = Some(u32::from(addr));
                             }
                         }
-                        "include" => {}
+
+                        "include" => {
+                            let file_name = self.tokens.next_if(|token|{
+                                token.kind == Identifier
+                            });
+                            let name = match file_name {
+                                None => {
+                                    errors.push(MismatchedTypes("Include needs Identifier but found something else".to_string()));
+                                    continue;
+                                }
+                                Some(n) => {n.clone().value.unwrap().get_word_value().unwrap()}
+                            };
+                            imports.insert(name);
+                        }
 
                         _ => { // unknown directive
                             errors.push(UnknownDirective(
@@ -293,7 +312,14 @@ impl <'a> Parser<'a> {
         tree.segments.push(current_segment);
 
         if pre_dec_allowed {
-            tree.constants.extend(DEFAULT_CONSTS);
+            tree.constants.extend(DEFAULT_CONSTS.clone());
+        }
+
+        // import everything
+        for import in imports {
+            self.include(&mut tree, import).unwrap_or_else(|e|{
+                errors.push(e);
+            });
         }
 
         // check for any missing constant definitions.
@@ -323,17 +349,13 @@ impl <'a> Parser<'a> {
             if token.kind == Comma { continue }
 
             if token.kind != Identifier && token.kind != Integer && token.kind != Register {
-                return Err(UnexpectedToken(
-                    format!("Cannot pass: {:?} into {:?} as an argument", token.kind, instruction)
-                ))
+                return Err(UnexpectedToken(format!("Cannot pass: {:?} into {:?} as an argument", token.kind, instruction)))
             }
 
             match token.kind {
                 Integer => {
                     let value = token.value.unwrap().get_int_value().unwrap();
-                    ins.args.push(
-                        Argument::Immediate(value)
-                    )
+                    ins.args.push(Argument::Immediate(value))
                 }
                 Identifier => {
                     let ident = token.value.unwrap().get_word_value().unwrap();
@@ -350,25 +372,64 @@ impl <'a> Parser<'a> {
                     match token.value.unwrap() {
                         ValueKind::Instruction(_) => {}
                         ValueKind::Integer(val) => {
-                            ins.args.push(
-                                Argument::Register(val)
-                            )
+                            ins.args.push(Argument::Register(val))
                         }
                         ValueKind::Word(val) => {
                             if !tree.constants.contains_key(&val) {
                                 tree.constants.insert(val.clone(), Unknown);
                             }
-                            ins.args.push(
-                                Argument::RegisterIdentifier(val)
-                            )
+                            ins.args.push(Argument::RegisterIdentifier(val))
                         }
                     }
                 }
                 _ => {}
             }
-
+        }
+        Ok(ins)
+    }
+    fn include(&mut self, tree : &mut ProgramTree, name : String) -> Result<(), Error> {
+        if tree.imports.contains(&name) {
+            return Ok(());
         }
 
-        Ok(ins)
+        // check if exists
+        let path = Path::new(&name);
+        if !path.is_file() {
+            return Err(IncludeError(
+                format!("Could not find file {}", &name)
+            ))
+        }
+
+        // open file
+        let contents = read_to_string(path);
+        if contents.is_err() { return Err(IncludeError(
+            format!("Unable to read file: {}", &name)
+        )) }
+        let contents = contents.unwrap();
+
+        // lex file
+        let tokens = Lexer::new(&contents).lex();
+        if tokens.is_err() {
+            return Err(IncludeError(format!("Failed to include {}, errors found.", &name)))
+        }
+        let tokens = tokens.unwrap();
+
+        // Parse tokens
+        let parsed = Parser::new(&tokens, name.clone()).parse(Some(tree.imports.clone()));
+        if parsed.is_err() {
+            return Err(IncludeError(
+                format!("Parsing failed on: {}", &name)
+            ));
+        }
+        let parsed = parsed.unwrap();
+
+        let incl = tree.include(parsed, &name);
+
+        if incl.is_err() {
+            return Err(IncludeError(format!(
+                "failed to include file: {}", &name
+            )))
+        }
+        Ok(())
     }
 }
