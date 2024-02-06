@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-use std::fs::read_to_string;
+use std::collections::{BTreeSet, HashMap};
 use std::iter::Peekable;
-use std::path::Path;
 use std::slice::Iter;
+use crate::helium::defaults::DEFAULT_CONSTS;
 use crate::helium::errors::Error;
-use crate::helium::errors::Error::{ConstantCollision, IncludeError, MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
+use crate::helium::errors::Error::{ConstantCollision, MismatchedTypes, UnexpectedEOF, UnexpectedToken, UnknownDirective, UnknownIdentifier};
 use crate::helium::instructions::{Argument, AsmInstruction, Instruction};
-use crate::helium::lexer::Lexer;
 use crate::helium::parser::ConstantType::{Label, Unknown, Value};
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Identifier, Integer, Newline, Register, SemiColon};
@@ -20,12 +18,56 @@ pub enum ConstantType {
 
 #[derive(Debug, Default, Clone)]
 pub struct ProgramTree {
+    // what does this tree contain
+    pub file_name : String,
     pub constants : HashMap<String, ConstantType>,
-    pub segments : Vec<ProgramSegment>
+    pub segments : Vec<ProgramSegment>,
+    // It seems like the better choice than HashSet
+    // because i dont think there will be more than ~50 (this seems like a way to high number)
+    // HashSet has a big array that usually never gets fully utilized.
+    pub imports : BTreeSet<String>
 }
 impl ProgramTree {
     pub fn new() -> Self {
-        Self { constants: Default::default(), segments: vec![] }
+        Self::default()
+    }
+    pub fn include(&mut self, mut other : Self, file_name : &str) -> Result<(), Vec<Error>> {
+        if self.imports.contains(&other.file_name) {
+            return Ok(());
+        }
+
+        let mut errors : Vec<Error> = vec![];
+
+        // check for constant collisions
+        let mut const_collision_found = false;
+        for (key, _) in &other.constants {
+            if self.constants.contains_key(key) {
+                const_collision_found = true;
+                errors.push(ConstantCollision(
+                 format!("constant collision found in file: {}: {}", file_name,key)
+                ))
+            }
+        }
+        if const_collision_found {
+            return Err(errors);
+        }
+
+        // renames the entry point of the other. should never crash cuz the first segment is always there.
+        let name = other.segments.get(0).unwrap().name.clone();
+        other.segments.get_mut(0).unwrap().name = format!("__{}:{}__auto_renamed", file_name, name);
+        
+        // take segments and constants
+
+        self.constants.extend(other.constants);
+        self.segments.extend(other.segments);
+
+        // take new imports
+        self.imports.extend(other.imports);
+
+        // add as include.
+        self.imports.insert(other.file_name);
+
+        Ok(())
     }
 }
 #[derive(Debug, Clone)]
@@ -65,8 +107,8 @@ impl <'a> Parser<'a> {
     pub fn new(tokens : &'a [Token]) -> Self {
         Self { tokens: tokens.iter().peekable() }
     }
-    pub fn parse(mut self) -> Result<ProgramTree, Vec<Error>> {
-        let mut tree = ProgramTree{ constants: Default::default(), segments: vec![] };
+    pub fn parse(mut self, import_tree : Option<BTreeSet<String>>) -> Result<ProgramTree, Vec<Error>> {
+        let mut tree = ProgramTree::new();
         let mut errors: Vec<Error> = vec![];
 
         // create root segment
@@ -224,85 +266,7 @@ impl <'a> Parser<'a> {
                                 current_segment.origin = Some(u32::from(addr));
                             }
                         }
-                        "include" => {
-                            // check if next is identifier.
-                            let next = match self.tokens.next() {
-                                Some(n) => n,
-                                None => {
-                                    errors.push(UnexpectedEOF);
-                                    continue;
-                                }
-                            };
-                            if next.kind != Identifier {
-                                errors.push(
-                                    UnexpectedToken(format!("Include needs Identifier, got: {:?}", next.kind))
-                                );
-                                continue;
-                            }
-
-                            let file_name = next.value.clone().unwrap().get_word_value().unwrap();
-
-                            // try load file
-                            let file_path = Path::new(&file_name);
-                            if !file_path.is_file() {
-                                errors.push(IncludeError(
-                                    format!("Could Not find file: {}", &file_name)
-                                ))
-                            }
-                            // load file
-                            let contents = match read_to_string(file_path) {
-                                Ok(c) => c,
-                                Err(e) => {
-                                    errors.push(IncludeError(
-                                        format!("Could Not read file: {}", e)
-                                    ));
-                                    continue;
-                                }
-                            };
-                            // parse file
-
-                            let p_tokens = match Lexer::new(&contents).lex() {
-                                Ok(a) => a,
-                                Err(_) => {
-                                    errors.push(IncludeError(
-                                        format!("Errors found in file '{}'", file_name)
-                                    ));
-                                    continue;
-                                }
-                            };
-                            let p_pars = Self::new(&p_tokens).parse();
-                            let mut p_tree = match p_pars {
-                                Ok(p) => p,
-                                Err(_) => {
-                                    errors.push(IncludeError(
-                                        format!("Errors found in file '{}'", file_name)
-                                    ));
-                                    continue;
-                                }
-                            };
-
-                            // handle constant collisions
-                            let mut cf = false;
-                            for (k, _) in &p_tree.constants {
-                                if tree.constants.contains_key(k) {
-                                    cf = true;
-                                    errors.push(ConstantCollision(
-                                        format!("Colliding constant found: {}", k)
-                                    ));
-                                }
-                            }
-                            if cf { continue; }
-
-                            for (k,v) in p_tree.clone().constants {
-                                tree.constants.insert(k, v);
-                            }
-                            // push all segments to the end.
-
-                            p_tree.segments[0].name = format!("__{}__entry", file_name);
-                            for segment in p_tree.segments {
-                                tree.segments.push(segment);
-                            }
-                        }
+                        "include" => {}
 
                         _ => { // unknown directive
                             errors.push(UnknownDirective(
@@ -329,33 +293,7 @@ impl <'a> Parser<'a> {
         tree.segments.push(current_segment);
 
         if pre_dec_allowed {
-            tree.constants.insert("r0".to_string(), Value(0));
-            tree.constants.insert("rA".to_string(), Value(0));
-            tree.constants.insert("A".to_string(), Value(0));
-
-            tree.constants.insert("r1".to_string(), Value(1));
-            tree.constants.insert("rB".to_string(), Value(1));
-            tree.constants.insert("B".to_string(), Value(1));
-
-            tree.constants.insert("r2".to_string(), Value(2));
-            tree.constants.insert("rC".to_string(), Value(2));
-            tree.constants.insert("C".to_string(), Value(2));
-
-            tree.constants.insert("r3".to_string(), Value(3));
-            tree.constants.insert("rX".to_string(), Value(3));
-            tree.constants.insert("X".to_string(), Value(3));
-
-            tree.constants.insert("r4".to_string(), Value(4));
-            tree.constants.insert("rY".to_string(), Value(4));
-            tree.constants.insert("Y".to_string(), Value(4));
-
-            tree.constants.insert("r5".to_string(), Value(5));
-            tree.constants.insert("rF".to_string(), Value(5));
-            tree.constants.insert("F".to_string(), Value(5));
-
-            tree.constants.insert("r6".to_string(), Value(6));
-            tree.constants.insert("rSP".to_string(), Value(6));
-            tree.constants.insert("SP".to_string(), Value(6));
+            tree.constants.extend(DEFAULT_CONSTS);
         }
 
         // check for any missing constant definitions.

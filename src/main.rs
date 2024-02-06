@@ -21,7 +21,7 @@ fn main() {
         }
     };
 
-    let parsed = match Parser::new(&tokens).parse() {
+    let parsed = match Parser::new(&tokens).parse(None) {
         Ok(t) => {t}
         Err(e) => {
             display_errors(e);
