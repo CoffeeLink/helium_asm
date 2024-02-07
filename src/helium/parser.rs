@@ -1,4 +1,4 @@
-mod parser;
+#![deprecated]
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs::read_to_string;

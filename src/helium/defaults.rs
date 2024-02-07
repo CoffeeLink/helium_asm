@@ -4,7 +4,7 @@ use crate::helium::parser::ConstantType;
 use crate::helium::parser::ConstantType::Value;
 
 // all const values for later use.
-
+#[deprecated]
 lazy_static!{
     pub static ref DEFAULT_CONSTS: HashMap<String, ConstantType> = {
         let mut m : HashMap<String, ConstantType>  = HashMap::new();

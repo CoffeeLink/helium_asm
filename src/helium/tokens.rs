@@ -19,6 +19,24 @@ pub enum TokenKind {
     Integer,
 }
 
+impl Display for TokenKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name : &str = match self {
+            TokenKind::Newline => {""}
+            TokenKind::Comma => {","}
+            TokenKind::SemiColon => {";"}
+            TokenKind::Instruction => {"Instruction"}
+            TokenKind::Identifier => {"Identifier"}
+            TokenKind::Label => {"Label"}
+            TokenKind::ConstantDeclaration => {"const"}
+            TokenKind::Directive => {"Directive"}
+            TokenKind::Register => {"Register"}
+            TokenKind::Integer => {"Integer"}
+        };
+        write!(f, "{}", name)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ValueKind {
     Instruction(AsmInstruction),

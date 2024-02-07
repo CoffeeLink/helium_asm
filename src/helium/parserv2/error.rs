@@ -1,17 +1,31 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use crate::helium::tokens::TokenKind;
 
-#[derive(Default, Debug)]
-struct ParserError(String);
-
-impl Display for ParserError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Parse Err: {}", self.0)
+#[derive(Debug)]
+pub enum  ParserError {
+    UnexpectedEOF,
+    MismatchedTypes{
+        expected : TokenKind,
+        got : TokenKind
+    },
+    ConstantCollision {
+        file : String,
+        name : String
     }
 }
 
-impl Error for ParserError {
-    fn description(&self) -> &str {
-        &self.0
+impl Display for ParserError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            ParserError::UnexpectedEOF => {"Unexpected EOF".into()}
+            ParserError::MismatchedTypes { expected, got } => {
+                format!("Mismatched Types. expected: {}, got: {}", expected, got)
+            }
+            ParserError::ConstantCollision { file, name } => {
+                format!("Constant collision: {}:{}", file, name)
+            }
+        };
+        write!(f, "{}", str)
     }
 }
