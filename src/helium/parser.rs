@@ -1,3 +1,5 @@
+mod parser;
+
 use std::collections::{BTreeSet, HashMap};
 use std::fs::read_to_string;
 use std::iter::Peekable;

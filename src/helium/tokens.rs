@@ -4,7 +4,7 @@ use crate::helium::tokens::ValueKind::Word;
 
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
-    // These tokens will just be eaten by the parser so its only for syntax enforcing
+    // These tokens will just be eaten by the parserv2 so its only for syntax enforcing
     Newline,
     Comma,
     SemiColon,

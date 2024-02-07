@@ -3,7 +3,6 @@ use std::process::exit;
 use helium_asm::Config;
 use helium_asm::helium::errors::Error;
 use helium_asm::helium::lexer::Lexer;
-use helium_asm::helium::parser::{Parser};
 /*
 TODO: Refactor everything to as readable as possible. (priority: Less Tabs)
 
@@ -24,14 +23,7 @@ fn main() {
         .unwrap_or_else(|e|{
             display_errors_and_exit(e)
     });
-
-    let parsed = Parser::new(&tokens, name)
-        .parse(None)
-        .unwrap_or_else(|e|{
-            display_errors_and_exit(e)
-        });
-
-    println!("{:?}", parsed)
+    
 }
 
 fn display_errors_and_exit(errors : Vec<Error>) -> ! {
