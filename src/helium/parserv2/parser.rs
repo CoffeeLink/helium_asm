@@ -136,7 +136,8 @@ impl <'a> Parser<'a> {
     }
 
     fn parse_integer(&mut self, mut tree : &ProgramTree, token : &Token) {
-
+        let value = token.value.clone().unwrap().get_int_value().unwrap();
+        self.current_segment.elements.push(ProgramElement::Immediate(value));
     }
 
     fn parse_instruction(&mut self, mut tree : &ProgramTree, token: &Token) {
