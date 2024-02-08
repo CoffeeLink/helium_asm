@@ -3,7 +3,7 @@ use crate::helium::parserv2::program_element::ProgramElement;
 #[derive(Debug, Clone)]
 pub struct ProgramSegment {
     pub name : String,
-    pub origin : Option<u32>,
+    pub origin : Option<u16>,
     pub elements : Vec<ProgramElement>
 }
 
@@ -15,7 +15,7 @@ impl ProgramSegment {
             elements: vec![],
         }
     }
-    pub fn with_origin(name : &str, origin : u32) -> Self {
+    pub fn with_origin(name : &str, origin : u16) -> Self {
         Self {
             name: name.to_string(),
             origin: Some(origin),

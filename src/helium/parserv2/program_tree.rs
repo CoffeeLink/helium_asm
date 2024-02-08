@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use crate::helium::parserv2::constant_type::ConstantType;
+use crate::helium::parserv2::default_constants::DEFAULT_CONSTANTS;
 use crate::helium::parserv2::program_segment::ProgramSegment;
 
 #[derive(Debug, Default, Clone)]
@@ -41,7 +42,7 @@ impl ProgramTree {
     
     // includes
     pub fn has_include(&mut self, file_name: &str) -> bool {
-        self.includes.contains(file_name)
+        self.includes.contains(file_name) || (self.allow_defaults && DEFAULT_CONSTANTS.contains_key(file_name))
     }
     pub fn add_include(&mut self, file_name: String) {
         self.includes.insert(file_name);

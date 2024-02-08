@@ -3,16 +3,12 @@ use std::slice::Iter;
 use crate::helium::parserv2::constant_type::ConstantType;
 use crate::helium::parserv2::constant_type::ConstantType::{Unknown, Value};
 use crate::helium::parserv2::error::ParserError;
-use crate::helium::parserv2::error::ParserError::{ConstantCollision, UnexpectedEOF};
+use crate::helium::parserv2::error::ParserError::{ConstantCollision, UnexpectedEOF, UnknownDirective};
 use crate::helium::parserv2::program_element::ProgramElement;
 use crate::helium::parserv2::program_segment::ProgramSegment;
 use crate::helium::parserv2::program_tree::ProgramTree;
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
-use crate::helium::tokens::TokenKind::{
-    ConstantDeclaration, Label,
-    Identifier, Integer, Register,
-    Directive, Instruction
-};
+use crate::helium::tokens::TokenKind::{ConstantDeclaration, Label, Identifier, Integer, Register, Directive, Instruction, SemiColon, Newline, Comma};
 
 struct Parser<'a> {
     file_name : String,
@@ -148,17 +144,86 @@ impl <'a> Parser<'a> {
     // this isn't allowed so raise error.
         let reg_key = token.clone().value.unwrap();
         self.errors.push(match reg_key {
-            ValueKind::Instruction(i) => { ParserError::Named{ error: format!("Unexpected Token: Register({:?})", i) }}
-            ValueKind::Integer(i) => { ParserError::Named{ error: format!("Unexpected Token: Register({})", i) }}
-            ValueKind::Word(w) => { ParserError::Named{ error: format!("Unexpected Token: Register({})", w) }}
+            ValueKind::Instruction(i) => {
+                ParserError::Named{ error: format!("Unexpected Token: Register({:?})", i) }}
+            ValueKind::Integer(i) => {
+                ParserError::Named{ error: format!("Unexpected Token: Register({})", i) }}
+            ValueKind::Word(w) => {
+                ParserError::Named{ error: format!("Unexpected Token: Register({})", w) }}
         })
     }
 
-    fn parse_directive(&mut self, mut tree: &ProgramTree, token: &Token) {
+    fn parse_directive(&mut self, mut tree: &mut ProgramTree, token: &Token) {
+        let directive_name = token.clone().value.unwrap().get_word_value().unwrap();
+        match directive_name.as_str() {
+            "no_predec" => tree.allow_defaults = false,
+            "skipto" => {self.parse_skipto_directive(tree)},
 
+            _=> {
+                self.errors.push(UnknownDirective {name: directive_name});
+                self.consume_expression(); // Arguments
+            }
+        }
+    }
+
+    ///Consumes every token until a newline, SemiColon or EOF.
+    fn consume_expression(&mut self) {
+        for next in self.tokens.by_ref() {
+            if next.kind == SemiColon || next.kind == Newline { break }
+        }
+    }
+
+    fn parse_skipto_directive(&mut self, mut tree : &mut ProgramTree) {
+        let addr = match self.parse_of_type(Integer) {
+            Ok(t) => t,
+            Err(e) => {
+                self.errors.push(e);
+                return;
+            }
+        }.value.clone().unwrap().get_int_value().unwrap();
+
+        //remove anything after so the next will be an actual token.
+        self.consume_whitespaces();
+
+        let next = self.tokens.peek();
+        if next.is_none() {
+            self.errors.push(UnexpectedEOF);
+        } else if next.is_some() && next.unwrap().kind != Label {
+            // create new segment and set origin.
+            let name = format!("__auto_label_{}_segment_{}__", &self.file_name, &tree.auto_label_id);
+            tree.auto_label_id += 1;
+
+            tree.segments.push(self.current_segment.clone());
+            self.current_segment = ProgramSegment::with_origin(&name, addr);
+        } else {
+            // label.
+
+            let name = match self.parse_of_type(Label) {
+                Ok(t) => t,
+                Err(e) => {
+                    self.errors.push(e);
+                    return;
+                }
+            }.value.clone().unwrap().get_word_value().unwrap();
+
+            if tree.has_const(&name) {
+                self.errors.push(ConstantCollision {
+                    file: self.file_name.clone(),
+                    name,
+                });
+                return;
+            }
+            tree.add_const(name.clone(), ConstantType::Label);
+
+            tree.segments.push(self.current_segment.clone());
+            self.current_segment = ProgramSegment::with_origin(&name, addr);
+        }
     }
 
     fn consume_whitespaces(&mut self) {
-
+        while let Some(token) = self.tokens.peek() {
+            if token.kind != Newline && token.kind != Comma && token.kind != SemiColon { break; }
+            self.tokens.next();
+        }
     }
 }
