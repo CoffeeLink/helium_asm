@@ -21,6 +21,9 @@ pub enum  ParserError {
     },
     UnknownDirective {
         name : String
+    },
+    UnknownIdentifier {
+        name : String
     }
 }
 
@@ -42,6 +45,9 @@ impl Display for ParserError {
             }
             ParserError::UnknownDirective {name} => {
                 format!("Unknown Directive: {}", name)
+            }
+            ParserError::UnknownIdentifier {name} => {
+                format!("Unknown Identifier: '{}'", name)
             }
         };
         write!(f, "{}", str)

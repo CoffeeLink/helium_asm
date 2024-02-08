@@ -4,7 +4,7 @@ use crate::helium::tokens::ValueKind::Word;
 
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
-    // These tokens will just be eaten by the parserv2 so its only for syntax enforcing
+    // These tokens will just be eaten by the parsing so its only for syntax enforcing
     Newline,
     Comma,
     SemiColon,
@@ -22,7 +22,7 @@ pub enum TokenKind {
 impl Display for TokenKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let name : &str = match self {
-            TokenKind::Newline => {""}
+            TokenKind::Newline => {"\\n"}
             TokenKind::Comma => {","}
             TokenKind::SemiColon => {";"}
             TokenKind::Instruction => {"Instruction"}

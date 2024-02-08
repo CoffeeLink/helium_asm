@@ -3,6 +3,7 @@ use std::process::exit;
 use helium_asm::Config;
 use helium_asm::helium::errors::Error;
 use helium_asm::helium::lexer::Lexer;
+use helium_asm::helium::parsing;
 /*
 TODO: Refactor everything to as readable as possible. (priority: Less Tabs)
 
@@ -23,7 +24,15 @@ fn main() {
         .unwrap_or_else(|e|{
             display_errors_and_exit(e)
     });
-    
+    let tree = parsing::Parser::new(&tokens, name.clone())
+        .parse(true).unwrap_or_else(|e|{
+        for err in e {
+            println!("{}", err);
+        }
+        exit(1)
+    });
+
+    print!("{}", tree);
 }
 
 fn display_errors_and_exit(errors : Vec<Error>) -> ! {

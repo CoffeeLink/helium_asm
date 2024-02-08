@@ -1,16 +1,19 @@
 use std::iter::Peekable;
 use std::slice::Iter;
-use crate::helium::parserv2::constant_type::ConstantType;
-use crate::helium::parserv2::constant_type::ConstantType::{Unknown, Value};
-use crate::helium::parserv2::error::ParserError;
-use crate::helium::parserv2::error::ParserError::{ConstantCollision, UnexpectedEOF, UnknownDirective};
-use crate::helium::parserv2::program_element::ProgramElement;
-use crate::helium::parserv2::program_segment::ProgramSegment;
-use crate::helium::parserv2::program_tree::ProgramTree;
+use crate::helium::instructions;
+use crate::helium::instructions::Argument;
+use crate::helium::parsing::constant_type::ConstantType;
+use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
+use crate::helium::parsing::error::ParserError;
+use crate::helium::parsing::error::ParserError::{ConstantCollision, MismatchedTypes, Named, UnexpectedEOF, UnknownDirective};
+use crate::helium::parsing::ParserError::UnknownIdentifier;
+use crate::helium::parsing::program_element::ProgramElement;
+use crate::helium::parsing::program_segment::ProgramSegment;
+use crate::helium::parsing::program_tree::ProgramTree;
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{ConstantDeclaration, Label, Identifier, Integer, Register, Directive, Instruction, SemiColon, Newline, Comma};
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     file_name : String,
 
     tokens : Peekable<Iter<'a, Token>>,
@@ -28,11 +31,30 @@ impl <'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> Result<ProgramTree, Vec<ParserError>> {
+    pub fn parse(mut self, is_root: bool) -> Result<ProgramTree, Vec<ParserError>> {
         let mut tree = ProgramTree::new(self.file_name.clone());
+
+        self.consume_whitespaces();
 
         while self.tokens.peek().is_some() {
             self.parse_next(&mut tree);
+        }
+
+        // Add final segment.
+        tree.segments.push(self.current_segment.clone());
+
+        if is_root {
+            tree.complete();
+        }
+
+        //Check for unresolved references
+        let check = tree.check_all_resolved();
+        if check.is_err() {
+            for e in check.err().unwrap() {
+                self.errors.push(
+                    UnknownIdentifier{name: e}
+                )
+            }
         }
 
         if !self.errors.is_empty() { return Err(self.errors) }
@@ -40,23 +62,23 @@ impl <'a> Parser<'a> {
     }
 
     /// Parses the next anything
-    fn parse_next(&mut self, mut tree : &mut ProgramTree) {
+    fn parse_next(&mut self, tree : &mut ProgramTree) {
         let next = self.tokens.next();
         if next.is_none() { return }
         let next = next.unwrap();
 
         match next.kind {
-            ConstantDeclaration => self.parse_constant(&mut tree),
-            Label => self.parse_label(&mut tree, next),
+            ConstantDeclaration => self.parse_constant(tree),
+            Label => self.parse_label(tree, next),
 
-            Identifier => self.parse_identifier(&mut tree, next),
-            Integer => self.parse_integer(&mut tree, next),
-            Register => self.parse_register(&mut tree, next),
+            Identifier => self.parse_identifier(tree, next),
+            Integer => self.parse_integer(next),
+            Register => self.parse_register(next),
 
-            Directive => self.parse_directive(&mut tree, next),
-            Instruction => self.parse_instruction(&mut tree, next),
+            Directive => self.parse_directive(tree, next),
+            Instruction => self.parse_instruction(tree, next),
 
-            _ => {/* consume token */}
+            _ => { /* consume token */ }
         }
     }
 
@@ -81,7 +103,6 @@ impl <'a> Parser<'a> {
 
         Ok(next.unwrap())
     }
-
     fn parse_constant(&mut self, tree : &mut ProgramTree) {
         let name = match self.parse_of_type(Identifier) {
             Ok(n) => {n.value.clone().unwrap().get_word_value().unwrap()}
@@ -104,7 +125,6 @@ impl <'a> Parser<'a> {
 
         tree.add_const(name, Value(value))
     }
-
     fn parse_label(&mut self, tree: &mut ProgramTree, token: &Token) {
         let name = token.clone().value.unwrap().get_word_value().unwrap();
         if tree.has_const(&name) {
@@ -119,7 +139,6 @@ impl <'a> Parser<'a> {
         tree.segments.push(self.current_segment.clone());
         self.current_segment = ProgramSegment::new(&name);
     }
-
     fn parse_identifier(&mut self, tree : &mut ProgramTree, token: &Token) {
         let key = token.value.clone().unwrap().get_word_value().unwrap();
 
@@ -127,20 +146,70 @@ impl <'a> Parser<'a> {
             tree.add_const(key.clone(), Unknown)
         }
         self.current_segment.elements.push(
-            ProgramElement::Identifier(key)
-        )
+            ProgramElement::Identifier(key.clone())
+        );
     }
 
-    fn parse_integer(&mut self, mut tree : &ProgramTree, token : &Token) {
+    fn parse_integer(&mut self, token : &Token) {
         let value = token.value.clone().unwrap().get_int_value().unwrap();
         self.current_segment.elements.push(ProgramElement::Immediate(value));
     }
+    fn parse_instruction(&mut self, tree : &mut ProgramTree, token: &Token) {
+        let asm_code = token.value.clone().unwrap()
+            .get_instruction_code().unwrap();
+        let mut ins = instructions::Instruction::new(asm_code);
 
-    fn parse_instruction(&mut self, mut tree : &ProgramTree, token: &Token) {
+        while let Some(next) = self.tokens.peek() {
+            if next.kind == Newline || next.kind == SemiColon { break }
+            let token = self.tokens.next().unwrap().clone();
+
+            if token.kind == Comma { continue }
+
+            if token.kind != Identifier &&
+                token.kind != Integer &&
+                token.kind != Register {
+                self.errors.push(
+                    Named {
+                        error: format!("Mismatched Types. expected: Identifier, Register Or Integer; found: {}", token.kind),
+                    });
+                continue;
+            }
+
+            if token.kind == Integer {
+                let val = token.value.unwrap().get_int_value().unwrap();
+                ins.args.push(Argument::Immediate(val));
+            } else if token.kind == Identifier {
+                let ident = token.value.unwrap().get_word_value().unwrap();
+
+                if !tree.has_const(&ident) {
+                    tree.add_const(ident.clone(), Unknown)
+                }
+
+                ins.args.push(
+                    Argument::ImmediateIdentifier(ident)
+                )
+            } else {
+                // Register case
+                let value = token.value.unwrap();
+
+                match value {
+                    ValueKind::Instruction(_) => {}
+                    ValueKind::Integer(i) => {
+                        ins.args.push(Argument::Register(i))
+                    }
+                    ValueKind::Word(w) => {
+                        if !tree.has_const(&w) {
+                            tree.add_const(w.clone(), Unknown);
+                        }
+                        ins.args.push(Argument::RegisterIdentifier(w))
+                    }
+                }
+            }
+        }
+        self.current_segment.elements.push(ProgramElement::Instruction(ins));
 
     }
-
-    fn parse_register(&mut self, mut tree : &ProgramTree, token : &Token) {
+    fn parse_register(&mut self, token : &Token) {
     // this isn't allowed so raise error.
         let reg_key = token.clone().value.unwrap();
         self.errors.push(match reg_key {
@@ -152,28 +221,25 @@ impl <'a> Parser<'a> {
                 ParserError::Named{ error: format!("Unexpected Token: Register({})", w) }}
         })
     }
-
-    fn parse_directive(&mut self, mut tree: &mut ProgramTree, token: &Token) {
+    fn parse_directive(&mut self, tree: &mut ProgramTree, token: &Token) {
         let directive_name = token.clone().value.unwrap().get_word_value().unwrap();
         match directive_name.as_str() {
             "no_predec" => tree.allow_defaults = false,
             "skipto" => {self.parse_skipto_directive(tree)},
-
+            // TODO: add include.
             _=> {
                 self.errors.push(UnknownDirective {name: directive_name});
                 self.consume_expression(); // Arguments
             }
         }
     }
-
     ///Consumes every token until a newline, SemiColon or EOF.
     fn consume_expression(&mut self) {
         for next in self.tokens.by_ref() {
             if next.kind == SemiColon || next.kind == Newline { break }
         }
     }
-
-    fn parse_skipto_directive(&mut self, mut tree : &mut ProgramTree) {
+    fn parse_skipto_directive(&mut self, tree : &mut ProgramTree) {
         let addr = match self.parse_of_type(Integer) {
             Ok(t) => t,
             Err(e) => {
@@ -195,6 +261,7 @@ impl <'a> Parser<'a> {
 
             tree.segments.push(self.current_segment.clone());
             self.current_segment = ProgramSegment::with_origin(&name, addr);
+
         } else {
             // label.
 
@@ -219,11 +286,10 @@ impl <'a> Parser<'a> {
             self.current_segment = ProgramSegment::with_origin(&name, addr);
         }
     }
-
     fn consume_whitespaces(&mut self) {
         while let Some(token) = self.tokens.peek() {
             if token.kind != Newline && token.kind != Comma && token.kind != SemiColon { break; }
-            self.tokens.next();
+            let t = self.tokens.next();
         }
     }
 }

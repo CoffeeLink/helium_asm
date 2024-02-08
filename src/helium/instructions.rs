@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::helium::instructions::AsmInstruction::{Add, AddWithCarry, And, BitCheck, Call, CallCarry, CallEquals, CallGreaterThan, CallGreaterThanEq, CallInterrupt, CallLessThan, CallLessThanEq, CallNotEquals, CallNotGreaterThan, CallNotLessThan, CallOverflow, CallZero, Compare, CompareSigned, Decrement, Halt, Increment, Jump, JumpCarry, JumpEquals, JumpGreaterThan, JumpGreaterThanEq, JumpLessThan, JumpLessThanEq, JumpNotEquals, JumpNotGreaterThan, JumpNotLessThan, JumpOverflow, JumpZero, Load, LoadProgramMemory, Move, Negative, NoOperation, Not, Or, Pop, Push, Reset, Return, ReturnCarry, ReturnEquals, ReturnGreaterThan, ReturnGreaterThanEq, ReturnLessThan, ReturnLessThanEq, ReturnNotEquals, ReturnNotGreaterThan, ReturnNotLessThan, ReturnOverflow, ReturnZero, SetBit, SetInterruptAddress, ShiftLeft, ShiftRight, Store, StoreProgramMemory, Sub, SubWithCarry, WaitUntilInterrupt, Xor};
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -156,4 +157,30 @@ pub enum Argument {
 
     Immediate(u16),
     ImmediateIdentifier(String)
+}
+
+impl Display for Argument {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Argument::Register(i) => write!(f, "${}", i),
+            Argument::RegisterIdentifier(i) => write!(f, "${}", i),
+            Argument::Immediate(i) => write!(f, "{}", i),
+            Argument::ImmediateIdentifier(i) => write!(f, "{}", i),
+        }
+    }
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut args = self.args.iter().peekable();
+        let mut out = format!("{:?}", self.kind);
+        while let Some(arg) = args.next() {
+            out.extend(format!(" {}", arg).chars());
+            if args.peek().is_some() {
+                out.push(',');
+            }
+        }
+
+        write!(f, "{};", out)
+    }
 }

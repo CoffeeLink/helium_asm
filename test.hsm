@@ -1,5 +1,5 @@
 // a basic fib program as an example.
-#include "consts.hsm"
+//#include "consts.hsm"
 
 const La 102;
 const n -10
@@ -11,7 +11,7 @@ loop:
     ADD $A, $B, $C;
     MOV $B, $A;
     MOV $A, $C;
-
+    #skipto 100;
     MOV $X, $A; // Export to X
     mov $1, 100; // $<id> test
 
@@ -19,5 +19,6 @@ loop:
 how:
     HLT; // This isn't should never be reachable.
 
+#skipto 0xFF;
 data:
-A
+    A; B;

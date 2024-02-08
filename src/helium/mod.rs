@@ -2,5 +2,4 @@ pub mod tokens;
 pub mod instructions;
 pub mod lexer;
 pub mod errors;
-
-pub mod parserv2;
+pub mod parsing;
