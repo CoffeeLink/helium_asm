@@ -5,7 +5,7 @@ use crate::helium::instructions::Argument;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
 use crate::helium::parsing::error::ParserError;
-use crate::helium::parsing::error::ParserError::{ConstantCollision, MismatchedTypes, Named, UnexpectedEOF, UnknownDirective};
+use crate::helium::parsing::error::ParserError::{ConstantCollision, Named, UnexpectedEOF, UnknownDirective};
 use crate::helium::parsing::ParserError::UnknownIdentifier;
 use crate::helium::parsing::program_element::ProgramElement;
 use crate::helium::parsing::program_segment::ProgramSegment;
@@ -289,7 +289,7 @@ impl <'a> Parser<'a> {
     fn consume_whitespaces(&mut self) {
         while let Some(token) = self.tokens.peek() {
             if token.kind != Newline && token.kind != Comma && token.kind != SemiColon { break; }
-            let t = self.tokens.next();
+            self.tokens.next();
         }
     }
 }
