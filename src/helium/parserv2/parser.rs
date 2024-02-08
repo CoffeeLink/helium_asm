@@ -7,7 +7,7 @@ use crate::helium::parserv2::error::ParserError::{ConstantCollision, UnexpectedE
 use crate::helium::parserv2::program_element::ProgramElement;
 use crate::helium::parserv2::program_segment::ProgramSegment;
 use crate::helium::parserv2::program_tree::ProgramTree;
-use crate::helium::tokens::{Token, TokenKind};
+use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{
     ConstantDeclaration, Label,
     Identifier, Integer, Register,
@@ -145,7 +145,13 @@ impl <'a> Parser<'a> {
     }
 
     fn parse_register(&mut self, mut tree : &ProgramTree, token : &Token) {
-
+    // this isn't allowed so raise error.
+        let reg_key = token.clone().value.unwrap();
+        self.errors.push(match reg_key {
+            ValueKind::Instruction(i) => { ParserError::Named{ error: format!("Unexpected Token: Register({:?})", i) }}
+            ValueKind::Integer(i) => { ParserError::Named{ error: format!("Unexpected Token: Register({})", i) }}
+            ValueKind::Word(w) => { ParserError::Named{ error: format!("Unexpected Token: Register({})", w) }}
+        })
     }
 
     fn parse_directive(&mut self, mut tree: &ProgramTree, token: &Token) {

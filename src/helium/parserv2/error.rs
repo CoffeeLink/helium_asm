@@ -12,6 +12,12 @@ pub enum  ParserError {
     ConstantCollision {
         file : String,
         name : String
+    },
+    UnexpectedToken {
+        kind: TokenKind
+    },
+    Named {
+        error: String
     }
 }
 
@@ -24,6 +30,12 @@ impl Display for ParserError {
             }
             ParserError::ConstantCollision { file, name } => {
                 format!("Constant collision: {}:{}", file, name)
+            }
+            ParserError::UnexpectedToken { kind } => {
+                format!("Unexpected Token: {}", kind)
+            }
+            ParserError::Named {error} => {
+                format!("{}", error)
             }
         };
         write!(f, "{}", str)
