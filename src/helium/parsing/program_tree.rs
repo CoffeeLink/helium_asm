@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
+use owo_colors::OwoColorize;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::ConstantType::Unknown;
 use crate::helium::parsing::default_constants::DEFAULT_CONSTANTS;
@@ -81,17 +82,17 @@ impl ProgramTree {
 impl Display for ProgramTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "ProgramTree of: {}", self.file_name)?;
-        writeln!(f, "Config:")?;
-        writeln!(f, "  Allow Defaults: {}", self.allow_defaults)?;
-        writeln!(f, "  AutoLabelID: {}", self.auto_label_id)?;
+        writeln!(f, "{}", "Config:".yellow())?;
+        writeln!(f, "  Allow Defaults: {}", self.allow_defaults.underline())?;
+        writeln!(f, "  AutoLabelID: {}", self.auto_label_id.underline())?;
 
-        writeln!(f, "Constants: {:?}", self.constants)?;
+        writeln!(f, "{} {:?}", "Constants: ".yellow(), self.constants)?;
 
         // Segments
         let seg_temp = self.segments.clone();
         let mut segments = seg_temp.iter().peekable();
 
-        writeln!(f, "Segments:")?;
+        writeln!(f, "{}", "Segments:".yellow())?;
         while let Some(segment) = segments.next().cloned() {
             if segment.origin.is_some() {
                 writeln!(f, "@{}\n{}:", segment.origin.unwrap(), segment.name)?;
