@@ -40,7 +40,7 @@ impl Display for ParserError {
                 format!("Unexpected Token: {}", kind)
             }
             ParserError::Named {error} => {
-                format!("{}", error)
+                error.to_string()
             }
             ParserError::UnknownDirective {name} => {
                 format!("Unknown Directive: {}", name)

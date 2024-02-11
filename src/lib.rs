@@ -7,11 +7,11 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_args() -> Result<Self, ()> {
+    pub fn from_args() -> Option<Self> {
         let mut args = args();
         args.next();
-        let file = args.next().ok_or(())?;
-        Ok(Self {
+        let file = args.next()?;
+        Some(Self {
             input_file: file
         })
     }

@@ -16,7 +16,7 @@ Features to finish:
 
 fn main() {
     let conf = Config::from_args()
-        .unwrap_or_else(|_| { panic!("{}", "No file provided.".red()) });
+        .unwrap_or_else(|| { panic!("{}", "No file provided.".red()) });
     let name = conf.get_file();
     let file_contents = read_to_string(name.clone())
         .unwrap_or_else(|_| { panic!("{}", "Failed to read file.".red()) });

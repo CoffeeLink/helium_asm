@@ -214,11 +214,11 @@ impl <'a> Parser<'a> {
         let reg_key = token.clone().value.unwrap();
         self.errors.push(match reg_key {
             ValueKind::Instruction(i) => {
-                ParserError::Named{ error: format!("Unexpected Token: Register({:?})", i) }}
+                Named{ error: format!("Unexpected Token: Register({:?})", i) }}
             ValueKind::Integer(i) => {
-                ParserError::Named{ error: format!("Unexpected Token: Register({})", i) }}
+                Named{ error: format!("Unexpected Token: Register({})", i) }}
             ValueKind::Word(w) => {
-                ParserError::Named{ error: format!("Unexpected Token: Register({})", w) }}
+                Named{ error: format!("Unexpected Token: Register({})", w) }}
         })
     }
     fn parse_directive(&mut self, tree: &mut ProgramTree, token: &Token) {
@@ -240,13 +240,18 @@ impl <'a> Parser<'a> {
         }
     }
     fn parse_skipto_directive(&mut self, tree : &mut ProgramTree) {
-        let addr = match self.parse_of_type(Integer) {
-            Ok(t) => t,
-            Err(e) => {
-                self.errors.push(e);
-                return;
-            }
-        }.value.clone().unwrap().get_int_value().unwrap();
+        let addr = if let Ok(t) = self.parse_of_type(Integer) {
+            t
+        } else if let Err(e) = self.parse_of_type(Integer) {
+            self.errors.push(e);
+            return;
+        } else {
+            unreachable!()
+        }.value
+            .clone()
+            .unwrap()
+            .get_int_value()
+            .unwrap();
 
         //remove anything after so the next will be an actual token.
         self.consume_whitespaces();

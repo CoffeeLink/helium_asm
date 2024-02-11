@@ -12,7 +12,7 @@ pub struct Lexer<'a> {
 }
 
 impl <'a> Lexer<'a> {
-    pub fn new(source: &'a String) -> Self {
+    pub fn new(source: &'a str) -> Self {
         let chars: Peekable<Chars<'a>> = source.chars().peekable();
         Self {
             source: chars
@@ -22,7 +22,7 @@ impl <'a> Lexer<'a> {
         let mut tokens : Vec<Token> = vec![];
         let mut errors : Vec<Error> = vec![];
 
-        while let Some(_) = self.source.peek() {
+        while self.source.peek().is_some() {
             match self.next_token() {
                 Ok(token) => {
                     match token {
@@ -83,10 +83,10 @@ impl <'a> Lexer<'a> {
                     return Err(UnexpectedToken("Unexpected '/'".to_string()));
                 }
 
-                while let Some(ch) = self.source.next() {
+                for ch in self.source.by_ref() {
                     if ch == '\n' { break; }
                 }
-                if self.source.peek() == None { return Ok(None); }
+                if self.source.peek().is_none() { return Ok(None); }
 
                 Token::from_kind(Newline)
             }
@@ -118,7 +118,7 @@ impl <'a> Lexer<'a> {
                     }
                 };
                 // Check if its longer than 0 chars
-                if word.len() == 0 {
+                if word.is_empty() {
                     return Err(ParseError("Directive has invalid name".to_string()))
                 }
 
@@ -144,8 +144,8 @@ impl <'a> Lexer<'a> {
                         }
                     };
                     Token::with_value(Integer, ValueKind::Integer(num))
-                } else if word.ends_with(":") {
-                    Token::with_value(Label, Word(word.replace(":", "")))
+                } else if word.ends_with(':') {
+                    Token::with_value(Label, Word(word.replace(':', "")))
                 } else if word == "const" || word == "CONST" {
                     Token::from_kind(ConstantDeclaration)
                 } else {
@@ -161,7 +161,7 @@ impl <'a> Lexer<'a> {
         let mut is_string_format = false;
 
         if start_char.is_some() {
-            if &start_char.unwrap() == &'"' {
+            if start_char.unwrap() == '"' {
                 is_string_format = true
             } else if !Self::is_const_compatible(&start_char.unwrap()) {
                 return Err(ParseError(format!("Incompatible char: '{}'", start_char.unwrap())))
@@ -176,7 +176,7 @@ impl <'a> Lexer<'a> {
                 if Self::is_const_compatible(ch) {
                     word.push(self.source.next().unwrap())
                 } else {
-                    let cha = ch.clone();
+                    let cha = *ch;
                     self.source.next(); // Consume so it doesnt give 2 errors
                     return Err(ParseError(format!("Incompatible char: '{}'", cha)))
                 }
@@ -208,7 +208,7 @@ impl <'a> Lexer<'a> {
     fn parse_int(source: &str, neg : bool) -> Result<u16, Error>{
         if source.starts_with("0x") {
             let mut val = source.replace("0x", "");
-            val = val.replace("_", "");
+            val = val.replace('_', "");
             let res = u16::from_str_radix(&val, 16);
             match res {
                 Ok(res) => Ok(res),
@@ -217,14 +217,14 @@ impl <'a> Lexer<'a> {
         }
         else if source.starts_with("0b") {
             let mut val = source.replace("0b", "");
-            val = val.replace("_", "");
+            val = val.replace('_', "");
             let res = u16::from_str_radix(&val, 2);
             match res {
                 Ok(res) => Ok(res),
                 Err(_) => Err(ParseError(format!("Could not parse to int: {}", val)))
             }
         } else {
-            let val = source.replace("_", "");
+            let val = source.replace('_', "");
             let res = u16::from_str(&val);
             match res {
                 Ok(res) => {
