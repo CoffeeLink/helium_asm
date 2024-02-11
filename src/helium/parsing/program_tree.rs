@@ -1,8 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
-use owo_colors::OwoColorize;
 use crate::helium::parsing::constant_type::ConstantType;
-use crate::helium::parsing::ConstantType::Unknown;
+use crate::helium::parsing::ConstantType::{Unknown};
 use crate::helium::parsing::default_constants::DEFAULT_CONSTANTS;
 use crate::helium::parsing::program_segment::ProgramSegment;
 
@@ -27,8 +26,9 @@ pub struct ProgramTree {
 impl ProgramTree {
     pub fn new(name : String) -> Self {
         Self {
-            file_name: name,
+            file_name: name.clone(),
             allow_defaults: true,
+            includes: BTreeSet::from([name]),
             ..Default::default()
         }
     }
@@ -81,34 +81,28 @@ impl ProgramTree {
 
 impl Display for ProgramTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "ProgramTree of: {}", self.file_name)?;
-        writeln!(f, "{}", "Config:".yellow())?;
-        writeln!(f, "  Allow Defaults: {}", self.allow_defaults.underline())?;
-        writeln!(f, "  AutoLabelID: {}", self.auto_label_id.underline())?;
+        let mut includes = self.includes.iter().peekable();
+        let mut out_str = String::new();
 
-        writeln!(f, "{} {:?}", "Constants: ".yellow(), self.constants)?;
-
-        // Segments
-        let seg_temp = self.segments.clone();
-        let mut segments = seg_temp.iter().peekable();
-
-        writeln!(f, "{}", "Segments:".yellow())?;
-        while let Some(segment) = segments.next().cloned() {
-            if segment.origin.is_some() {
-                writeln!(f, "@{}\n{}:", segment.origin.unwrap(), segment.name)?;
-            } else {
-                writeln!(f, "{}:", segment.name)?;
-            }
-
-            if segment.elements.is_empty() {continue}
-
-            for element in segment.elements {
-                writeln!(f, "    {}", element)?;
-            }
-            if segments.peek().is_some() {
-                writeln!(f)?;
+        while let Some(include) = includes.next() {
+            out_str += include;
+            if includes.peek().is_some() {
+                out_str += ", ";
             }
         }
-        Ok(())
+        writeln!(f, "ProgramTree: {}", out_str)?;
+        write!(f, "Constants: ")?;
+
+        let const_count = self.constants.iter()
+            .filter(|(_, v)|{
+                **v != ConstantType::Label
+            })
+            .count();
+        if self.allow_defaults {
+            writeln!(f, "{} + Defaults", const_count - DEFAULT_CONSTANTS.len())?;
+        } else {
+            writeln!(f, "{}", const_count - DEFAULT_CONSTANTS.iter().count())?;
+        }
+        writeln!(f, "Segments: {}", self.segments.len())
     }
 }
