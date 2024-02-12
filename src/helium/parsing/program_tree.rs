@@ -103,9 +103,14 @@ impl Display for ProgramTree {
             })
             .count();
         if self.allow_defaults {
-            writeln!(f, "{} + Defaults", const_count - DEFAULT_CONSTANTS.len())?;
+            let constants = const_count - DEFAULT_CONSTANTS.len();
+            if constants == 0 {
+                writeln!(f, "Defaults")?;
+            } else {
+                writeln!(f, "{} + Defaults", constants)?;
+            }
         } else {
-            writeln!(f, "{}", const_count - DEFAULT_CONSTANTS.iter().count())?;
+            writeln!(f, "{}", const_count)?;
         }
         writeln!(f, "Segments: {}", self.segments.len())
     }

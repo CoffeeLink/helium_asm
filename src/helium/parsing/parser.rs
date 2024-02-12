@@ -279,7 +279,6 @@ impl <'a> Parser<'a> {
         match directive_name.as_str() {
             "no_predec" => tree.allow_defaults = false,
             "skipto" => {self.parse_skipto_directive(tree)},
-            // TODO: add include.
             "include" => {self.parse_include_directive(tree)}
             _=> {
                 self.errors.push(UnknownDirective {name: directive_name});
