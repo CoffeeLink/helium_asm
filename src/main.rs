@@ -27,7 +27,7 @@ fn main() {
             display_errors_and_exit(e)
     });
     let tree = parsing::Parser::new(&tokens, name.clone())
-        .parse(true).unwrap_or_else(|e|{
+        .parse(None).unwrap_or_else(|e|{
         for err in e {
             println!("{}", err.red().bold());
         }

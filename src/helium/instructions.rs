@@ -148,6 +148,7 @@ impl Instruction {
     pub fn new(kind: AsmInstruction) -> Self {
         Self { kind, args: vec![] }
     }
+    // TODO: Add Instruction Validation.
 }
 
 #[derive(Debug, Clone)]

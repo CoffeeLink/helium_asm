@@ -14,7 +14,7 @@ pub struct ProgramTree {
     pub segments : Vec<ProgramSegment>,
 
     /// All files that have been included so far
-    includes : BTreeSet<String>,
+    pub includes : BTreeSet<String>,
 
     // Config and tree metadata.
     /// Stores the last value used by the auto segmentation by skipto.
@@ -47,10 +47,14 @@ impl ProgramTree {
     /// Checks if all references/consts can be resolved.
     /// Returns Ok() if all references are resolved.
     /// If not, returns Err(yVec<String>) containing all unresolved references.
-    pub fn check_all_resolved(&mut self) -> Result<(), Vec<String>> {
+    pub fn check_all_resolved(&mut self, is_child_node : bool) -> Result<(), Vec<String>> {
         let mut unresolved: Vec<String> = vec![];
 
         for (k, v) in self.constants.clone() {
+            if is_child_node && DEFAULT_CONSTANTS.contains_key(&k) && self.allow_defaults {
+                continue; // we skip because child nodes dont have defaults included yet.
+            }
+
             if v == Unknown {
                 unresolved.push(k);
             }

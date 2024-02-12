@@ -1,5 +1,2 @@
-
-const La 39;
-
-main:
-MOV $A $B
+const STACK_FRAME_START 255;
+const STACK_FRANE_END 500;

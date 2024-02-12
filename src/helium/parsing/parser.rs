@@ -1,12 +1,16 @@
+use std::collections::BTreeSet;
+use std::fs::read_to_string;
 use std::iter::Peekable;
+use std::path::Path;
 use std::slice::Iter;
 use crate::helium::instructions;
 use crate::helium::instructions::Argument;
+use crate::helium::lexer::Lexer;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
 use crate::helium::parsing::error::ParserError;
 use crate::helium::parsing::error::ParserError::{ConstantCollision, Named, UnexpectedEOF, UnknownDirective};
-use crate::helium::parsing::ParserError::UnknownIdentifier;
+use crate::helium::parsing::ParserError::{FileError, FileNotFound, IncludeLexError, UnknownIdentifier};
 use crate::helium::parsing::program_element::ProgramElement;
 use crate::helium::parsing::program_segment::ProgramSegment;
 use crate::helium::parsing::program_tree::ProgramTree;
@@ -18,7 +22,10 @@ pub struct Parser<'a> {
 
     tokens : Peekable<Iter<'a, Token>>,
     errors : Vec<ParserError>,
-    current_segment : ProgramSegment
+    current_segment : ProgramSegment,
+
+    /// All the To-Be included files found in the main file.
+    imports: BTreeSet<String>,
 }
 
 impl <'a> Parser<'a> {
@@ -27,13 +34,18 @@ impl <'a> Parser<'a> {
             file_name,
             tokens: tokens.iter().peekable(),
             errors: vec![],
-            current_segment: ProgramSegment::new("entry")
+            current_segment: ProgramSegment::new("entry"),
+            imports: Default::default(),
         }
     }
 
-    pub fn parse(mut self, is_root: bool) -> Result<ProgramTree, Vec<ParserError>> {
+    pub fn parse(mut self, root: Option<&ProgramTree>) -> Result<ProgramTree, Vec<ParserError>> {
         let mut tree = ProgramTree::new(self.file_name.clone());
-
+        if root.is_some() {
+            self.current_segment.name = format!("__include_entry_{}__", self.file_name);
+            tree = root.unwrap().clone();
+            tree.add_include(self.file_name.clone());
+        }
         self.consume_whitespaces();
 
         while self.tokens.peek().is_some() {
@@ -43,12 +55,17 @@ impl <'a> Parser<'a> {
         // Add final segment.
         tree.segments.push(self.current_segment.clone());
 
-        if is_root {
+        // Include all To-be-included files.
+        for import in self.imports.clone() {
+            tree = self.include(&mut tree, import).unwrap_or(tree);
+        }
+
+        if root.is_none() {
             tree.complete();
         }
 
         //Check for unresolved references
-        let check = tree.check_all_resolved();
+        let check = tree.check_all_resolved(root.is_some());
         if check.is_err() {
             for e in check.err().unwrap() {
                 self.errors.push(
@@ -59,6 +76,42 @@ impl <'a> Parser<'a> {
 
         if !self.errors.is_empty() { return Err(self.errors) }
         Ok(tree)
+    }
+
+    fn include(&mut self, tree : &mut ProgramTree, file : String) -> Option<ProgramTree>{
+        let path = Path::new(&file);
+        if !path.is_file() {
+            self.errors.push(FileNotFound(file));
+            return None;
+        }
+
+        let contents = read_to_string(path);
+        let contents = if contents.is_err() {
+            self.errors.push(FileError(file));
+            return None;
+        } else if let Ok(c) = contents {
+            c
+        } else {
+            unreachable!()
+        };
+        // Lex file.
+        let tokens = Lexer::new(&contents).lex();
+        if let Err(e) = tokens {
+            for err in e {
+                self.errors.push(IncludeLexError(err));
+            }
+            return None;
+        }
+        let tokens = tokens.unwrap();
+        // parse
+        let new_tree = Parser::new(&tokens, file).parse(Some(tree));
+        if let Err(e) = new_tree {
+            for err in e {
+                self.errors.push(err);
+            }
+            return None;
+        }
+        Some(new_tree.unwrap())
     }
 
     /// Parses the next anything
@@ -227,6 +280,7 @@ impl <'a> Parser<'a> {
             "no_predec" => tree.allow_defaults = false,
             "skipto" => {self.parse_skipto_directive(tree)},
             // TODO: add include.
+            "include" => {self.parse_include_directive(tree)}
             _=> {
                 self.errors.push(UnknownDirective {name: directive_name});
                 self.consume_expression(); // Arguments
@@ -290,6 +344,23 @@ impl <'a> Parser<'a> {
             tree.segments.push(self.current_segment.clone());
             self.current_segment = ProgramSegment::with_origin(&name, addr);
         }
+    }
+    fn parse_include_directive(&mut self, tree: &mut ProgramTree) {
+        let possible_token = self.parse_of_type(Identifier);
+        let include_name = if let Ok(t) = possible_token {
+            t
+        } else if let Err(e) = possible_token {
+            self.errors.push(e);
+            return;
+        } else { unreachable!() }.clone().value
+            .unwrap()
+            .get_word_value()
+            .unwrap();
+
+        // check if includes contain this import.
+        if tree.has_include(&include_name) { return; }
+        self.imports.insert(include_name);
+
     }
     fn consume_whitespaces(&mut self) {
         while let Some(token) = self.tokens.peek() {

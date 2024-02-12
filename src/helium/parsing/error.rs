@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use crate::helium::errors::Error;
 use crate::helium::tokens::TokenKind;
 
 #[derive(Debug)]
@@ -23,7 +24,10 @@ pub enum  ParserError {
     },
     UnknownIdentifier {
         name : String
-    }
+    },
+    FileNotFound(String),
+    FileError(String),
+    IncludeLexError(Error),
 }
 
 impl Display for ParserError {
@@ -48,6 +52,16 @@ impl Display for ParserError {
             ParserError::UnknownIdentifier {name} => {
                 format!("Unknown Identifier: '{}'", name)
             }
+            ParserError::FileNotFound(name) => {
+                format!("File Not Found: {}", name)
+            }
+            ParserError::FileError(name) => {
+                format!("Could Not Open File: {}", name)
+            }
+            ParserError::IncludeLexError(err) => {
+                format!("{:?}", err)
+            }
+            
         };
         write!(f, "{}", str)
     }

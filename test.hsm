@@ -1,7 +1,6 @@
 // a basic fib program as an example.
-//#include "consts.hsm"
+#include "consts.hsm"
 
-const La 102;
 const n -10
 
 main:
