@@ -5,6 +5,7 @@ use std::path::Path;
 use std::slice::Iter;
 use crate::helium::instructions;
 use crate::helium::instructions::Argument;
+use crate::helium::instructions::AsmInstruction::Halt;
 use crate::helium::lexer::Lexer;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
@@ -50,6 +51,14 @@ impl <'a> Parser<'a> {
 
         while self.tokens.peek().is_some() {
             self.parse_next(&mut tree);
+        }
+
+
+        // halt at the end of main, cuz there is no need to accidentally go into the next block.
+        if root.is_none() {
+            self.current_segment.elements.push(
+                ProgramElement::Instruction(instructions::Instruction::new(Halt))
+            )
         }
 
         // Add final segment.
