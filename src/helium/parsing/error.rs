@@ -1,30 +1,16 @@
-use std::fmt::{Display, Formatter};
 use crate::helium::errors::Error;
 use crate::helium::tokens::TokenKind;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
-pub enum  ParserError {
+pub enum ParserError {
     UnexpectedEOF,
-    MismatchedTypes{
-        expected : TokenKind,
-        got : TokenKind
-    },
-    ConstantCollision {
-        file : String,
-        name : String
-    },
-    UnexpectedToken {
-        kind: TokenKind
-    },
-    Named {
-        error: String
-    },
-    UnknownDirective {
-        name : String
-    },
-    UnknownIdentifier {
-        name : String
-    },
+    MismatchedTypes { expected: TokenKind, got: TokenKind },
+    ConstantCollision { file: String, name: String },
+    UnexpectedToken { kind: TokenKind },
+    Named { error: String },
+    UnknownDirective { name: String },
+    UnknownIdentifier { name: String },
     FileNotFound(String),
     FileError(String),
     IncludeLexError(Error),
@@ -33,7 +19,7 @@ pub enum  ParserError {
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
-            ParserError::UnexpectedEOF => {"Unexpected EOF".into()}
+            ParserError::UnexpectedEOF => "Unexpected EOF".into(),
             ParserError::MismatchedTypes { expected, got } => {
                 format!("Mismatched Types. expected: {}, got: {}", expected, got)
             }
@@ -43,13 +29,11 @@ impl Display for ParserError {
             ParserError::UnexpectedToken { kind } => {
                 format!("Unexpected Token: {}", kind)
             }
-            ParserError::Named {error} => {
-                error.to_string()
-            }
-            ParserError::UnknownDirective {name} => {
+            ParserError::Named { error } => error.to_string(),
+            ParserError::UnknownDirective { name } => {
                 format!("Unknown Directive: {}", name)
             }
-            ParserError::UnknownIdentifier {name} => {
+            ParserError::UnknownIdentifier { name } => {
                 format!("Unknown Identifier: '{}'", name)
             }
             ParserError::FileNotFound(name) => {
@@ -61,7 +45,6 @@ impl Display for ParserError {
             ParserError::IncludeLexError(err) => {
                 format!("{:?}", err)
             }
-            
         };
         write!(f, "{}", str)
     }

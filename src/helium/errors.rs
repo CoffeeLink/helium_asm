@@ -1,3 +1,4 @@
+use std::fmt::{Debug};
 
 #[derive(Debug)]
 pub enum Error {
@@ -11,3 +12,8 @@ pub enum Error {
     IncludeError(String),
     ConstantCollision(String),
 }
+
+/*
+New error system.
+
+ */

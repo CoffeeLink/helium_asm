@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
-use lazy_static::lazy_static;
 use crate::helium::parsing::constant_type::ConstantType;
-use crate::helium::parsing::constant_type::ConstantType::{Value};
-lazy_static!{
-    pub static ref DEFAULT_CONSTANTS : BTreeMap<String, ConstantType> = {
-        let mut m : BTreeMap<String, ConstantType> = BTreeMap::new();
+use crate::helium::parsing::constant_type::ConstantType::Value;
+use lazy_static::lazy_static;
+use std::collections::BTreeMap;
+lazy_static! {
+    pub static ref DEFAULT_CONSTANTS: BTreeMap<String, ConstantType> = {
+        let mut m: BTreeMap<String, ConstantType> = BTreeMap::new();
 
         m.insert("A".into(), Value(0));
         m.insert("rA".into(), Value(0));

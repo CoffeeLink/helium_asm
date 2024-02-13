@@ -1,5 +1,16 @@
+use crate::helium::instructions::AsmInstruction::{
+    Add, AddWithCarry, And, BitCheck, Call, CallCarry, CallEquals, CallGreaterThan,
+    CallGreaterThanEq, CallInterrupt, CallLessThan, CallLessThanEq, CallNotEquals,
+    CallNotGreaterThan, CallNotLessThan, CallOverflow, CallZero, Compare, CompareSigned, Decrement,
+    Halt, Increment, Jump, JumpCarry, JumpEquals, JumpGreaterThan, JumpGreaterThanEq, JumpLessThan,
+    JumpLessThanEq, JumpNotEquals, JumpNotGreaterThan, JumpNotLessThan, JumpOverflow, JumpZero,
+    Load, LoadProgramMemory, Move, Negative, NoOperation, Not, Or, Pop, Push, Reset, Return,
+    ReturnCarry, ReturnEquals, ReturnGreaterThan, ReturnGreaterThanEq, ReturnLessThan,
+    ReturnLessThanEq, ReturnNotEquals, ReturnNotGreaterThan, ReturnNotLessThan, ReturnOverflow,
+    ReturnZero, SetBit, SetInterruptAddress, ShiftLeft, ShiftRight, Store, StoreProgramMemory, Sub,
+    SubWithCarry, WaitUntilInterrupt, Xor,
+};
 use std::fmt::{Display, Formatter};
-use crate::helium::instructions::AsmInstruction::{Add, AddWithCarry, And, BitCheck, Call, CallCarry, CallEquals, CallGreaterThan, CallGreaterThanEq, CallInterrupt, CallLessThan, CallLessThanEq, CallNotEquals, CallNotGreaterThan, CallNotLessThan, CallOverflow, CallZero, Compare, CompareSigned, Decrement, Halt, Increment, Jump, JumpCarry, JumpEquals, JumpGreaterThan, JumpGreaterThanEq, JumpLessThan, JumpLessThanEq, JumpNotEquals, JumpNotGreaterThan, JumpNotLessThan, JumpOverflow, JumpZero, Load, LoadProgramMemory, Move, Negative, NoOperation, Not, Or, Pop, Push, Reset, Return, ReturnCarry, ReturnEquals, ReturnGreaterThan, ReturnGreaterThanEq, ReturnLessThan, ReturnLessThanEq, ReturnNotEquals, ReturnNotGreaterThan, ReturnNotLessThan, ReturnOverflow, ReturnZero, SetBit, SetInterruptAddress, ShiftLeft, ShiftRight, Store, StoreProgramMemory, Sub, SubWithCarry, WaitUntilInterrupt, Xor};
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum AsmInstruction {
@@ -14,45 +25,81 @@ pub enum AsmInstruction {
 
     Move,
 
-    Store, StoreProgramMemory,
+    Store,
+    StoreProgramMemory,
 
-    Load, LoadProgramMemory,
+    Load,
+    LoadProgramMemory,
 
-    Push, Pop,
+    Push,
+    Pop,
 
-    Add, AddWithCarry,
-    Sub, SubWithCarry,
+    Add,
+    AddWithCarry,
+    Sub,
+    SubWithCarry,
 
     Negative,
 
-    Increment, Decrement,
+    Increment,
+    Decrement,
 
-    And, Or, Xor, Not,
+    And,
+    Or,
+    Xor,
+    Not,
 
-    ShiftLeft, ShiftRight,
+    ShiftLeft,
+    ShiftRight,
 
-    SetBit, BitCheck,
+    SetBit,
+    BitCheck,
 
-    Compare, CompareSigned,
+    Compare,
+    CompareSigned,
 
-    Jump, Call, Return,
+    Jump,
+    Call,
+    Return,
 
-    JumpEquals,         CallEquals,         ReturnEquals,
-    JumpNotEquals,      CallNotEquals,      ReturnNotEquals,
-    JumpLessThan,       CallLessThan,       ReturnLessThan,
-    JumpLessThanEq,     CallLessThanEq,     ReturnLessThanEq,
-    JumpNotLessThan,    CallNotLessThan,    ReturnNotLessThan,
-    JumpGreaterThan,    CallGreaterThan,    ReturnGreaterThan,
-    JumpGreaterThanEq,  CallGreaterThanEq,  ReturnGreaterThanEq,
-    JumpNotGreaterThan, CallNotGreaterThan, ReturnNotGreaterThan,
+    JumpEquals,
+    CallEquals,
+    ReturnEquals,
+    JumpNotEquals,
+    CallNotEquals,
+    ReturnNotEquals,
+    JumpLessThan,
+    CallLessThan,
+    ReturnLessThan,
+    JumpLessThanEq,
+    CallLessThanEq,
+    ReturnLessThanEq,
+    JumpNotLessThan,
+    CallNotLessThan,
+    ReturnNotLessThan,
+    JumpGreaterThan,
+    CallGreaterThan,
+    ReturnGreaterThan,
+    JumpGreaterThanEq,
+    CallGreaterThanEq,
+    ReturnGreaterThanEq,
+    JumpNotGreaterThan,
+    CallNotGreaterThan,
+    ReturnNotGreaterThan,
 
-    JumpZero, CallZero, ReturnZero,
-    JumpOverflow, CallOverflow, ReturnOverflow,
-    JumpCarry, CallCarry, ReturnCarry
+    JumpZero,
+    CallZero,
+    ReturnZero,
+    JumpOverflow,
+    CallOverflow,
+    ReturnOverflow,
+    JumpCarry,
+    CallCarry,
+    ReturnCarry,
 }
 
 impl AsmInstruction {
-    pub fn match_instruction(word : &str) -> Option<Self> {
+    pub fn match_instruction(word: &str) -> Option<Self> {
         match word {
             "mov" | "MOV" => Some(Move),
 
@@ -135,14 +182,14 @@ impl AsmInstruction {
             "rez" | "REZ" => Some(ReturnZero),
             "rof" | "ROF" => Some(ReturnOverflow),
             "rcr" | "RCR" => Some(ReturnCarry),
-            _ => None
+            _ => None,
         }
     }
 }
 #[derive(Debug, Clone)]
 pub struct Instruction {
-    pub kind : AsmInstruction,
-    pub args : Vec<Argument>
+    pub kind: AsmInstruction,
+    pub args: Vec<Argument>,
 }
 impl Instruction {
     pub fn new(kind: AsmInstruction) -> Self {
@@ -157,7 +204,7 @@ pub enum Argument {
     RegisterIdentifier(String),
 
     Immediate(u16),
-    ImmediateIdentifier(String)
+    ImmediateIdentifier(String),
 }
 
 impl Display for Argument {

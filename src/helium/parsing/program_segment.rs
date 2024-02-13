@@ -2,9 +2,9 @@ use crate::helium::parsing::program_element::ProgramElement;
 
 #[derive(Debug, Clone)]
 pub struct ProgramSegment {
-    pub name : String,
-    pub origin : Option<u16>,
-    pub elements : Vec<ProgramElement>
+    pub name: String,
+    pub origin: Option<u16>,
+    pub elements: Vec<ProgramElement>,
 }
 
 impl ProgramSegment {
@@ -15,7 +15,7 @@ impl ProgramSegment {
             elements: vec![],
         }
     }
-    pub fn with_origin(name : &str, origin : u16) -> Self {
+    pub fn with_origin(name: &str, origin: u16) -> Self {
         Self {
             name: name.to_string(),
             origin: Some(origin),

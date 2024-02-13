@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 use crate::helium::instructions::AsmInstruction;
 use crate::helium::tokens::ValueKind::Word;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
@@ -21,17 +21,17 @@ pub enum TokenKind {
 
 impl Display for TokenKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let name : &str = match self {
-            TokenKind::Newline => {"\\n"}
-            TokenKind::Comma => {","}
-            TokenKind::SemiColon => {";"}
-            TokenKind::Instruction => {"Instruction"}
-            TokenKind::Identifier => {"Identifier"}
-            TokenKind::Label => {"Label"}
-            TokenKind::ConstantDeclaration => {"const"}
-            TokenKind::Directive => {"Directive"}
-            TokenKind::Register => {"Register"}
-            TokenKind::Integer => {"Integer"}
+        let name: &str = match self {
+            TokenKind::Newline => "\\n",
+            TokenKind::Comma => ",",
+            TokenKind::SemiColon => ";",
+            TokenKind::Instruction => "Instruction",
+            TokenKind::Identifier => "Identifier",
+            TokenKind::Label => "Label",
+            TokenKind::ConstantDeclaration => "const",
+            TokenKind::Directive => "Directive",
+            TokenKind::Register => "Register",
+            TokenKind::Integer => "Integer",
         };
         write!(f, "{}", name)
     }
@@ -41,25 +41,25 @@ impl Display for TokenKind {
 pub enum ValueKind {
     Instruction(AsmInstruction),
     Integer(u16), // u16 for future support.
-    Word(String)
+    Word(String),
 }
 impl ValueKind {
-    pub fn get_word_value(self) -> Option<String>{
+    pub fn get_word_value(self) -> Option<String> {
         match self {
-            Word(w) => {Some(w)}
-            _ => None
+            Word(w) => Some(w),
+            _ => None,
         }
     }
     pub fn get_int_value(self) -> Option<u16> {
         match self {
             ValueKind::Integer(i) => Some(i),
-            _ => None
+            _ => None,
         }
     }
     pub fn get_instruction_code(self) -> Option<AsmInstruction> {
         match self {
             ValueKind::Instruction(i) => Some(i),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -71,7 +71,7 @@ pub struct Token {
     // For Debug/Error report purposes
     pub file: Option<String>,
     pub line: Option<u32>,
-    pub char: Option<u32>
+    pub char: Option<u32>,
 }
 
 impl Token {
@@ -80,15 +80,15 @@ impl Token {
         value: Option<ValueKind>,
         file: Option<String>,
         line: Option<u32>,
-        char: Option<u32>
+        char: Option<u32>,
     ) -> Self {
-        Self{
+        Self {
             kind: token_kind,
             value,
 
             file,
             line,
-            char
+            char,
         }
     }
     pub fn from_kind(token_kind: TokenKind) -> Self {
@@ -109,11 +109,11 @@ impl Token {
 
             file: None,
             line: None,
-            char: None
+            char: None,
         }
     }
 
-    pub fn set_file_name(mut self, name : String) -> Self {
+    pub fn set_file_name(mut self, name: String) -> Self {
         self.file = Some(name);
         self
     }
