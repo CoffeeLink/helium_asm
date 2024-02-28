@@ -1,3 +1,5 @@
+#![deprecated]
+
 use crate::helium::errors::Error;
 use crate::helium::errors::Error::{ParseError, UnexpectedToken};
 use crate::helium::instructions::AsmInstruction;
@@ -13,6 +15,8 @@ use std::str::{Chars, FromStr};
 pub struct Lexer<'a> {
     file_name: &'a str,
     source: Peekable<Chars<'a>>,
+    line_count: u32,
+    current_char: u32
 }
 
 impl<'a> Lexer<'a> {
@@ -21,6 +25,8 @@ impl<'a> Lexer<'a> {
         Self {
             file_name: name,
             source: chars,
+            line_count: 1,
+            current_char: 0
         }
     }
     pub fn lex(&mut self) -> Result<Vec<Token>, Vec<Error>> {
@@ -56,9 +62,15 @@ impl<'a> Lexer<'a> {
 
         let next = self.source.next().unwrap();
 
+        self.current_char += 1;
+
         return Ok(Some(
             match next {
-                '\n' => Token::from_kind(Newline),
+                '\n' => {
+                    self.line_count += 1;
+                    self.current_char = 0;
+                    Token::from_kind(Newline)
+                },
                 ';' => Token::from_kind(SemiColon),
                 ',' => Token::from_kind(Comma),
                 '-' => {
@@ -68,7 +80,7 @@ impl<'a> Lexer<'a> {
                         Err(e) => return Err(e),
                     };
 
-                    let num = Self::parse_int(&word, true);
+                    let num = Self::parse_int(&word, true, self.line_count);
                     match num {
                         Ok(n) => Token::with_value(Integer, ValueKind::Integer(n)),
                         Err(e) => {
@@ -79,11 +91,13 @@ impl<'a> Lexer<'a> {
                 '/' => {
                     let after = self.source.peek();
                     if after != Some(&'/') {
-                        return Err(UnexpectedToken("Unexpected '/'".to_string()));
+                        return Err(UnexpectedToken("Unexpected '/'".to_string(), self.line_count));
                     }
 
                     for ch in self.source.by_ref() {
                         if ch == '\n' {
+                            self.line_count += 1;
+                            self.current_char = 0;
                             break;
                         }
                     }
@@ -99,15 +113,15 @@ impl<'a> Lexer<'a> {
                         Ok(w) => w,
                         Err(e) => return Err(e),
                     };
-                    // Check if its a number
+                    // Check if it's a number
                     if word.chars().next().unwrap().is_numeric() {
-                        let i_val = match Self::parse_int(&word, false) {
+                        let i_val = match Self::parse_int(&word, false, self.line_count) {
                             Ok(i) => i,
                             Err(e) => return Err(e),
                         };
                         Token::with_value(Register, ValueKind::Integer(i_val))
                     } else {
-                        // its not a number so its an identifier.
+                        // it's not a number, so it's an identifier.
                         Token::with_value(Register, Word(word))
                     }
                 }
@@ -117,9 +131,9 @@ impl<'a> Lexer<'a> {
                         Ok(w) => w,
                         Err(e) => return Err(e),
                     };
-                    // Check if its longer than 0 chars
+                    // Check if it's longer than 0 chars
                     if word.is_empty() {
-                        return Err(ParseError("Directive has invalid name".to_string()));
+                        return Err(ParseError("Directive has invalid name".to_string(), self.line_count));
                     }
 
                     Token::with_value(Directive, Word(word))
@@ -134,7 +148,7 @@ impl<'a> Lexer<'a> {
                         // Instruction token
                         Token::with_value(Instruction, ValueKind::Instruction(ins))
                     } else if first.is_numeric() {
-                        let num = match Self::parse_int(&word, false) {
+                        let num = match Self::parse_int(&word, false, self.line_count) {
                             Ok(n) => n,
                             Err(e) => {
                                 return Err(e);
@@ -149,8 +163,8 @@ impl<'a> Lexer<'a> {
                         Token::with_value(Identifier, Word(word))
                     }
                 }
-            }
-            .set_file_name(self.file_name.to_string()),
+            }.set_file_name(self.file_name.to_string())
+                .set_position(self.line_count, self.current_char)
         ));
     }
 
@@ -165,7 +179,8 @@ impl<'a> Lexer<'a> {
                 return Err(ParseError(format!(
                     "Incompatible char: '{}'",
                     start_char.unwrap()
-                )));
+                ), self.line_count
+                ));
             } else {
                 word.push(start_char.unwrap())
             }
@@ -177,18 +192,22 @@ impl<'a> Lexer<'a> {
                     break;
                 }
                 if Self::is_const_compatible(ch) {
+                    self.current_char += 1;
                     word.push(self.source.next().unwrap())
                 } else {
                     let cha = *ch;
                     self.source.next(); // Consume so it doesnt give 2 errors
-                    return Err(ParseError(format!("Incompatible char: '{}'", cha)));
+                    self.current_char += 1;
+                    return Err(ParseError(format!("Incompatible char: '{}'", cha), self.line_count));
                 }
             } else {
                 if ch == &'"' {
                     self.source.next(); // Consume the "
+                    self.current_char += 1;
                     break;
                 }
 
+                self.current_char +=1;
                 word.push(self.source.next().unwrap());
             }
         }
@@ -207,14 +226,14 @@ impl<'a> Lexer<'a> {
         ch.is_alphanumeric() || ch == &'_' || ch == &':'
     }
 
-    fn parse_int(source: &str, neg: bool) -> Result<u16, Error> {
+    fn parse_int(source: &str, neg: bool, line : u32) -> Result<u16, Error> {
         if source.starts_with("0x") {
             let mut val = source.replace("0x", "");
             val = val.replace('_', "");
             let res = u16::from_str_radix(&val, 16);
             match res {
                 Ok(res) => Ok(res),
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val))),
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
             }
         } else if source.starts_with("0b") {
             let mut val = source.replace("0b", "");
@@ -222,7 +241,7 @@ impl<'a> Lexer<'a> {
             let res = u16::from_str_radix(&val, 2);
             match res {
                 Ok(res) => Ok(res),
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val))),
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
             }
         } else {
             let val = source.replace('_', "");
@@ -235,7 +254,7 @@ impl<'a> Lexer<'a> {
                         Ok(res)
                     }
                 }
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val))),
+                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
             }
         }
     }

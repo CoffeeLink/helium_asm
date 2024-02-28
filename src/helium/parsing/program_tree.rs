@@ -10,7 +10,7 @@ pub struct ProgramTree {
     pub file_name: String, // the name of the file that has been parsed here.
 
     /// stores all constants (labels and constants)
-    constants: BTreeMap<String, ConstantType>,
+    pub constants: BTreeMap<String, ConstantType>,
     pub segments: Vec<ProgramSegment>,
 
     /// All files that have been included so far
@@ -52,7 +52,7 @@ impl ProgramTree {
 
         for (k, v) in self.constants.clone() {
             if is_child_node && DEFAULT_CONSTANTS.contains_key(&k) && self.allow_defaults {
-                continue; // we skip because child nodes dont have defaults included yet.
+                continue; // we skip because child nodes don't have defaults included yet.
             }
 
             if v == Unknown {
@@ -67,7 +67,7 @@ impl ProgramTree {
         }
     }
 
-    /// Only run if its a root segment.
+    /// Only run if it's a root segment.
     pub fn complete(&mut self) {
         if self.allow_defaults {
             self.constants.extend(DEFAULT_CONSTANTS.clone());

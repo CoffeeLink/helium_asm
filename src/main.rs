@@ -1,5 +1,5 @@
-use helium_asm::helium::errors::Error;
-use helium_asm::helium::lexer::Lexer;
+use helium_asm::helium::errors::HeliumError;
+use helium_asm::helium::new_lexer::Lexer;
 use helium_asm::helium::parsing;
 use helium_asm::Config;
 use std::fs::read_to_string;
@@ -11,7 +11,6 @@ TODO: Features to finish:
     - Instruction Validity check
     - refactor errors to a global error system.
     - assembler.
-    -
  */
 
 fn main() {
@@ -21,8 +20,9 @@ fn main() {
         read_to_string(name.clone()).unwrap_or_else(|_| panic!("{}", "Failed to read file.".red()));
 
     let tokens = Lexer::new(&name, &file_contents)
-        .lex()
-        .unwrap_or_else(|e| display_errors_and_exit(e));
+        .tokenize()
+        .unwrap_or_else(|e| display_errors_and_exit(e, &file_contents));
+
     let tree = parsing::Parser::new(&tokens, name.clone())
         .parse(None)
         .unwrap_or_else(|e| {
@@ -33,9 +33,19 @@ fn main() {
         });
 
     print!("{}", tree);
+    print!("{:?}", tree.constants)
 }
 
-fn display_errors_and_exit(errors: Vec<Error>) -> ! {
-    println!("Errors : {:?}", errors);
+fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
+    for err in errors {
+        println!("{} {}", "An error occurred on line: ".bright_blue(), err.line.underline());
+        println!("   {}", "| ".blue());
+        println!("{} {}{}",
+                 err.line.bright_red(),
+                 "|".blue(),
+                 source.lines().nth((err.line - 1) as usize).unwrap().yellow());
+        println!("   {}", "|\n".blue());
+        println!("{}", err.message.bright_red());
+    }
     exit(1)
 }

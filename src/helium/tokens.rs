@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
-    // These tokens will just be eaten by the parsing so its only for syntax enforcing
+    // These tokens will just be eaten by the parsing, so it's only for syntax enforcing
     Newline,
     Comma,
     SemiColon,

@@ -9,13 +9,14 @@ main:
 loop:
     ADD $A, $B, $C;
     MOV $B, $A;
-    MOV $A, $C;
+    MOV $A, $A;
+    
     #skipto 100;
     MOV $X, $A; // Export to X
     mov $1, 100; // $<id> test
 
     JMP loop;
-how:
+std::how:
     HLT; // This isn't should never be reachable.
 
 #skipto 0xFF;
