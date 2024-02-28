@@ -1,7 +1,7 @@
 use crate::helium::instructions;
 use crate::helium::instructions::Argument;
 use crate::helium::instructions::AsmInstruction::Halt;
-use crate::helium::lexer::Lexer;
+use crate::helium::new_lexer::Lexer;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
 use crate::helium::parsing::error::ParserError;
@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             unreachable!()
         };
         // Lex file.
-        let tokens = Lexer::new(&file, &contents).lex();
+        let tokens = Lexer::new(&file, &contents).tokenize();
         if let Err(e) = tokens {
             for err in e {
                 self.errors.push(IncludeLexError(err));
