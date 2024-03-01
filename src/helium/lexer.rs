@@ -1,261 +1,360 @@
-#![deprecated]
-
-use crate::helium::errors::Error;
-use crate::helium::errors::Error::{ParseError, UnexpectedToken};
-use crate::helium::instructions::AsmInstruction;
-use crate::helium::tokens::TokenKind::{
-    Comma, ConstantDeclaration, Directive, Identifier, Instruction, Integer, Label, Newline,
-    Register, SemiColon,
-};
-use crate::helium::tokens::ValueKind::Word;
-use crate::helium::tokens::{Token, ValueKind};
 use std::iter::Peekable;
+use std::num::ParseIntError;
 use std::str::{Chars, FromStr};
+use crate::helium::errors::HeliumError;
+use crate::helium::instructions::AsmInstruction;
+use crate::helium::tokens::{Token, TokenKind, ValueKind};
+use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Directive, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
+use crate::helium::tokens::ValueKind::Word;
 
+// TODO: Line by line token analysis, check if a line causes an error, if so
+//  return the error but not the token stream
+
+/// The new class for tokenizing the file.
 pub struct Lexer<'a> {
     file_name: &'a str,
-    source: Peekable<Chars<'a>>,
-    line_count: u32,
-    current_char: u32
-}
 
-impl<'a> Lexer<'a> {
-    pub fn new(name: &'a str, source: &'a str) -> Self {
-        let chars: Peekable<Chars<'a>> = source.chars().peekable();
+    source: Peekable<Chars<'a>>,
+    pub tokens: Vec<Token>,
+    pub errors: Vec<HeliumError>,
+
+    line: u32,
+    char: u32
+}
+impl <'a> Lexer <'a> {
+    pub fn new(name: &'a str, file_content: &'a str) -> Self {
         Self {
             file_name: name,
-            source: chars,
-            line_count: 1,
-            current_char: 0
+            source: file_content
+                .chars()
+                .peekable(),
+            tokens: vec![],
+            errors: vec![],
+
+            line: 0,
+            char: 0
         }
     }
-    pub fn lex(&mut self) -> Result<Vec<Token>, Vec<Error>> {
-        let mut tokens: Vec<Token> = vec![];
-        let mut errors: Vec<Error> = vec![];
-
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, Vec<HeliumError>> {
         while self.source.peek().is_some() {
-            match self.next_token() {
-                Ok(token) => {
-                    match token {
-                        None => { /* how */ }
-                        Some(t) => tokens.push(t),
-                    }
-                }
-                Err(err) => errors.push(err),
-            }
+            self.next_token();
         }
 
-        if !errors.is_empty() {
-            return Err(errors);
+        if !self.errors.is_empty() {
+            return Err(self.errors.clone())
         }
 
-        Ok(tokens)
+        Ok(self.tokens.clone())
     }
 
-    fn next_token(&mut self) -> Result<Option<Token>, Error> {
+    fn next_token(&mut self) {
         self.consume_whitespaces();
 
-        let next_token = self.source.peek();
-        if next_token.is_none() {
-            return Ok(None);
+        if self.source.peek().is_none() {
+            return;
         }
 
         let next = self.source.next().unwrap();
+        self.char += 1;
 
-        self.current_char += 1;
+        match next {
+            '\n' => {
+                self.line += 1;
+                self.char = 0;
+                self.new_token(Newline);
+            }
+            ';' => self.new_token(SemiColon),
+            ',' => self.new_token(Comma),
+            '-' => self.parse_negative(),
+            '/' => self.parse_comment(),
+            '$' => self.parse_register(),
+            '#' => self.parse_directive(),
 
-        return Ok(Some(
-            match next {
-                '\n' => {
-                    self.line_count += 1;
-                    self.current_char = 0;
-                    Token::from_kind(Newline)
-                },
-                ';' => Token::from_kind(SemiColon),
-                ',' => Token::from_kind(Comma),
-                '-' => {
-                    // parse num as negative, then convert to u8 eq
-                    let word = match self.parse_word(None) {
-                        Ok(w) => w,
-                        Err(e) => return Err(e),
-                    };
-
-                    let num = Self::parse_int(&word, true, self.line_count);
-                    match num {
-                        Ok(n) => Token::with_value(Integer, ValueKind::Integer(n)),
-                        Err(e) => {
-                            return Err(e);
-                        }
-                    }
-                }
-                '/' => {
-                    let after = self.source.peek();
-                    if after != Some(&'/') {
-                        return Err(UnexpectedToken("Unexpected '/'".to_string(), self.line_count));
-                    }
-
-                    for ch in self.source.by_ref() {
-                        if ch == '\n' {
-                            self.line_count += 1;
-                            self.current_char = 0;
-                            break;
-                        }
-                    }
-                    if self.source.peek().is_none() {
-                        return Ok(None);
-                    }
-
-                    Token::from_kind(Newline)
-                }
-                '$' => {
-                    // Register prefix
-                    let word = match self.parse_word(None) {
-                        Ok(w) => w,
-                        Err(e) => return Err(e),
-                    };
-                    // Check if it's a number
-                    if word.chars().next().unwrap().is_numeric() {
-                        let i_val = match Self::parse_int(&word, false, self.line_count) {
-                            Ok(i) => i,
-                            Err(e) => return Err(e),
-                        };
-                        Token::with_value(Register, ValueKind::Integer(i_val))
-                    } else {
-                        // it's not a number, so it's an identifier.
-                        Token::with_value(Register, Word(word))
-                    }
-                }
-                '#' => {
-                    // Directive prefix.
-                    let word = match self.parse_word(None) {
-                        Ok(w) => w,
-                        Err(e) => return Err(e),
-                    };
-                    // Check if it's longer than 0 chars
-                    if word.is_empty() {
-                        return Err(ParseError("Directive has invalid name".to_string(), self.line_count));
-                    }
-
-                    Token::with_value(Directive, Word(word))
-                }
-                first => {
-                    let word = match self.parse_word(Some(first)) {
-                        Ok(w) => w,
-                        Err(e) => return Err(e),
-                    };
-
-                    if let Some(ins) = AsmInstruction::match_instruction(&word) {
-                        // Instruction token
-                        Token::with_value(Instruction, ValueKind::Instruction(ins))
-                    } else if first.is_numeric() {
-                        let num = match Self::parse_int(&word, false, self.line_count) {
-                            Ok(n) => n,
-                            Err(e) => {
-                                return Err(e);
-                            }
-                        };
-                        Token::with_value(Integer, ValueKind::Integer(num))
-                    } else if word.ends_with(':') {
-                        Token::with_value(Label, Word(word.replace(':', "")))
-                    } else if word == "const" || word == "CONST" {
-                        Token::from_kind(ConstantDeclaration)
-                    } else {
-                        Token::with_value(Identifier, Word(word))
-                    }
-                }
-            }.set_file_name(self.file_name.to_string())
-                .set_position(self.line_count, self.current_char)
-        ));
+            f_char => self.parse_any(f_char)
+        }
     }
 
-    fn parse_word(&mut self, start_char: Option<char>) -> Result<String, Error> {
+    /// parses a word into a token by checking the value.
+    fn parse_any(&mut self, first_char : char) {
+        let mut word = match self.parse_word(Some(first_char)) {
+            Ok(w) => w,
+            Err(e) => {
+                self.errors.push(e);
+                return;
+            }
+        };
+
+        if let Some(ins) = AsmInstruction::match_instruction(&word) {
+            self.new_token_with_value(Instruction, ValueKind::Instruction(ins))
+        } else if first_char.is_numeric() {
+            let num = match self.parse_int(&word, false) {
+                Ok(n) => n,
+                Err(_) => {
+                    self.errors.push(HeliumError::new("Man wtf".to_string(), self.line, self.char));
+                    return;
+                }
+            };
+            self.new_token_with_value(Integer, ValueKind::Integer(num));
+        } else if word.ends_with(':') {
+            word.remove(word.len() - 1);
+            self.new_token_with_value(Label, Word(word));
+        } else if word == "const" || word == "CONST" {
+            self.new_token(ConstantDeclaration)
+        } else {
+            self.new_token_with_value(Identifier, Word(word));
+        }
+    }
+    fn parse_directive(&mut self) {
+        let word = match self.parse_word(None) {
+            Ok(w) => w,
+            Err(err) => {
+                self.errors.push(err);
+                return;
+            }
+        };
+        if word.is_empty() {
+            self.errors.push(HeliumError::new(
+                "Invalid directive name: empty prefix".to_string(),
+                self.line,
+                self.char
+            ));
+            return;
+        }
+        self.new_token_with_value(Directive, Word(word))
+    }
+    fn parse_register(&mut self) {
+        let word = match self.parse_word(None) {
+            Ok(w) => w,
+            Err(e) => {
+                self.errors.push(e);
+                return;
+            }
+        };
+
+        if word.chars().next().unwrap().is_numeric() {
+            let int = match self.parse_int(&word, false) {
+                Ok(i) => i,
+                Err(_) => {
+                    self.errors.push(
+                        HeliumError::new(
+                            "bruh, epic int fail.".to_string(),
+                            self.line,
+                            self.char
+                        )
+                    );
+                    return;
+                }
+            };
+            self.new_token_with_value(Register, ValueKind::Integer(int));
+        } else {
+            self.new_token_with_value(Register, Word(word));
+        }
+    }
+    fn parse_comment(&mut self) {
+        // check for '/' then consume until newline. (don't consume the newline)
+        let next = self.source.peek();
+        if next != Some(&'/') {
+            self.errors.push(HeliumError::new("Epic comment fail.".to_string(), self.line, self.char))
+        }
+        self.source.next();
+
+        for ch in self.source.by_ref() {
+            if ch == '\n' {
+                self.line += 1;
+                self.char = 0;
+                break;
+            }
+        }
+        self.new_token(Newline);
+    }
+    fn parse_negative(&mut self) {
+        // parse the following number into a token.
+        let word_out = self.parse_word(None);
+
+        if let Err(e) = word_out {
+            self.errors.push(e);
+            return;
+        }
+
+        let word = word_out.unwrap();
+        let num_out = self.parse_int(&word, true);
+
+        if num_out.is_err() {
+            self.errors.push(HeliumError::new("ParseInt Error".to_string(), self.line, self.char));
+            return;
+        }
+
+        let num = num_out.unwrap();
+
+        self.new_token_with_value(Integer, ValueKind::Integer(num));
+    }
+    fn new_token(&mut self, kind: TokenKind) {
+        self.tokens.push(
+            Token::from_kind(kind)
+            .set_file_name(self.file_name.to_string())
+            .set_position(self.line, self.char)
+        )
+    }
+    fn new_token_with_value(&mut self, kind: TokenKind, value: ValueKind) {
+        self.tokens.push(
+            Token::with_value(kind, value)
+            .set_file_name(self.file_name.to_string())
+            .set_position(self.line, self.char)
+        )
+    }
+    fn parse_word(&mut self, start_char: Option<char>) -> Result<String, HeliumError> {
         let mut word = String::new();
-        let mut is_string_format = false;
+        let mut is_string = false;
 
         if start_char.is_some() {
-            if start_char.unwrap() == '"' {
-                is_string_format = true
-            } else if !Self::is_const_compatible(&start_char.unwrap()) {
-                return Err(ParseError(format!(
-                    "Incompatible char: '{}'",
-                    start_char.unwrap()
-                ), self.line_count
-                ));
+            if start_char.unwrap() == '"' { is_string = true }
+            else if !Self::is_const_compatible(&start_char.unwrap()) {
+                return Err(HeliumError::new(
+                    format!("Incompatible char: {}", start_char.unwrap()),
+                    self.line,
+                    self.char
+                ))
             } else {
                 word.push(start_char.unwrap())
             }
         }
 
         while let Some(ch) = self.source.peek() {
-            if !is_string_format {
-                if ch.is_whitespace() || ch == &';' || ch == &',' {
-                    break;
-                }
+            if !is_string {
+                if ch.is_whitespace() || *ch == ';' || *ch == ',' { break; }
                 if Self::is_const_compatible(ch) {
-                    self.current_char += 1;
-                    word.push(self.source.next().unwrap())
+                    self.char += 1;
+                    word.push(self.source.next().unwrap());
                 } else {
-                    let cha = *ch;
-                    self.source.next(); // Consume so it doesnt give 2 errors
-                    self.current_char += 1;
-                    return Err(ParseError(format!("Incompatible char: '{}'", cha), self.line_count));
+                    let ch = self.source.next().unwrap();
+                    self.char += 1;
+                    return Err(HeliumError::new(
+                        format!("Incompatible char: {}", ch),
+                        self.line,
+                        self.char
+                    ))
                 }
             } else {
-                if ch == &'"' {
-                    self.source.next(); // Consume the "
-                    self.current_char += 1;
+                if *ch == '"' {
+                    self.source.next();
+                    self.char += 1;
                     break;
                 }
 
-                self.current_char +=1;
+                if *ch == '\n' {
+                    self.line += 1;
+                    self.char = 0;
+                }
+
+                self.char += 1;
                 word.push(self.source.next().unwrap());
             }
         }
+
         Ok(word)
     }
-
+    fn parse_int(&mut self, word : &str, negative: bool) -> Result<u16, ParseIntError> {
+        if word.starts_with("0x") {
+            u16::from_str_radix(&word.replace("0x", "")
+                .replace('_', ""), 16)
+        } else if word.starts_with("0b") {
+            u16::from_str_radix(&word.replace("0b", "")
+                .replace('_', ""), 2)
+        } else {
+            let value = u16::from_str(&word.replace('_', ""));
+            if let Ok(v) = value {
+                if negative {
+                    Ok(!v + 1)
+                } else {
+                    Ok(v)
+                }
+            } else {
+                Err(value.unwrap_err())
+            }
+        }
+    }
     fn consume_whitespaces(&mut self) {
         let mut next = self.source.peek();
         while next.is_some() && next.unwrap().is_whitespace() && next.unwrap() != &'\n' {
             self.source.next();
+            self.char += 1;
+
             next = self.source.peek();
         }
     }
-
     fn is_const_compatible(ch: &char) -> bool {
-        ch.is_alphanumeric() || ch == &'_' || ch == &':'
+        ch.is_alphanumeric() || *ch == '_' || *ch == ':'
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::helium::lexer::Lexer;
+    use crate::helium::tokens::TokenKind::{ConstantDeclaration, Identifier, Integer, Newline};
+
+    #[test]
+    fn whitespace_consumption() {
+        let input = String::from("      \n   \n");
+        let mut lexer = Lexer::new("Test input", &input);
+        let out = lexer.tokenize();
+        assert!(out.is_ok());
+
+        let tokens = out.unwrap();
+
+        assert_eq!(tokens.len(), 2);
+
+        assert_eq!(tokens[0].kind, Newline);
+        assert_eq!(tokens[1].kind, Newline);
     }
 
-    fn parse_int(source: &str, neg: bool, line : u32) -> Result<u16, Error> {
-        if source.starts_with("0x") {
-            let mut val = source.replace("0x", "");
-            val = val.replace('_', "");
-            let res = u16::from_str_radix(&val, 16);
-            match res {
-                Ok(res) => Ok(res),
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
-            }
-        } else if source.starts_with("0b") {
-            let mut val = source.replace("0b", "");
-            val = val.replace('_', "");
-            let res = u16::from_str_radix(&val, 2);
-            match res {
-                Ok(res) => Ok(res),
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
-            }
-        } else {
-            let val = source.replace('_', "");
-            let res = u16::from_str(&val);
-            match res {
-                Ok(res) => {
-                    if neg {
-                        Ok(!res + 1)
-                    } else {
-                        Ok(res)
-                    }
-                }
-                Err(_) => Err(ParseError(format!("Could not parse to int: {}", val), line)),
-            }
-        }
+    #[test]
+    fn empty_file() {
+        let input = String::from("");
+        let mut lexer = Lexer::new("Test input", &input);
+        let out = lexer.tokenize();
+        assert!(out.is_ok());
+
+        let tokens = out.unwrap();
+
+        assert!(tokens.is_empty());
+    }
+    #[test]
+    fn consume_comment() {
+        let input = "//hello";
+        let mut lex = Lexer::new("Test input", input);
+        let out = lex.tokenize();
+
+        assert!(out.is_ok());
+        let tokens = out.unwrap();
+
+        assert_eq!(tokens.len(), 1)
+    }
+
+    #[test]
+    fn parse_negative_int() {
+        let input = "-100";
+        let mut lex = Lexer::new("Test input", input);
+        let out = lex.tokenize();
+
+        assert!(out.is_ok());
+        let tokens = out.unwrap();
+
+        assert_eq!(tokens[0].kind, Integer)
+    }
+
+    #[test]
+    fn test_const_declarations() {
+        let input = "const Const CONST"; // should only return 2 constant tokens and 1 identifier.
+
+        let mut lexer = Lexer::new("Test input", input);
+        let out = lexer.tokenize();
+        assert!(out.is_ok());
+
+        let tokens = out.unwrap();
+
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].kind, ConstantDeclaration);
+        assert_eq!(tokens[1].kind, Identifier);
+        assert_eq!(tokens[2].kind, ConstantDeclaration);
     }
 }

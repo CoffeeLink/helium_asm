@@ -1,7 +1,7 @@
 use crate::helium::instructions;
 use crate::helium::instructions::Argument;
 use crate::helium::instructions::AsmInstruction::Halt;
-use crate::helium::new_lexer::Lexer;
+use crate::helium::lexer::Lexer;
 use crate::helium::parsing::constant_type::ConstantType;
 use crate::helium::parsing::constant_type::ConstantType::{Unknown, Value};
 use crate::helium::parsing::error::ParserError;

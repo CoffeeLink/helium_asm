@@ -1,5 +1,5 @@
 use helium_asm::helium::errors::HeliumError;
-use helium_asm::helium::new_lexer::Lexer;
+use helium_asm::helium::lexer::Lexer;
 use helium_asm::helium::parsing;
 use helium_asm::Config;
 use std::fs::read_to_string;
