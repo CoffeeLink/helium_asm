@@ -6,6 +6,7 @@ use std::fs::read_to_string;
 use std::process::exit;
 
 use owo_colors::OwoColorize;
+use helium_asm::helium::validator::validate_tree;
 /*
 TODO: Features to finish:
     - Instruction Validity check
@@ -31,9 +32,13 @@ fn main() {
             }
             exit(1)
         });
-
     print!("{}", tree);
-    print!("{:?}", tree.constants)
+
+    let errors = validate_tree(&tree);
+
+    if !errors.is_empty() { 
+        display_errors_and_exit(errors, &file_contents)
+    }
 }
 
 fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
@@ -43,7 +48,7 @@ fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
         println!("{} {}{}",
                  err.line.bright_red(),
                  "|".blue(),
-                 source.lines().nth((err.line - 1) as usize).unwrap().yellow());
+                 source.lines().nth((err.line) as usize).unwrap().yellow());
         println!("   {}", "|\n".blue());
         println!("{}", err.message.bright_red());
     }

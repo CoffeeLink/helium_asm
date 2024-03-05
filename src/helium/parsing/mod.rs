@@ -2,7 +2,7 @@ mod constant_type;
 mod default_constants;
 mod error;
 mod parser;
-mod program_element;
+pub mod program_element;
 mod program_segment;
 mod program_tree;
 

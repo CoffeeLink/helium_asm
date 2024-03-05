@@ -8,6 +8,12 @@ pub enum ProgramElement {
     Immediate(u16),
 }
 
+impl ProgramElement {
+    pub fn is_instruction(&self) -> bool {
+        matches!(self, ProgramElement::Instruction(_))
+    }
+}
+
 impl Display for ProgramElement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

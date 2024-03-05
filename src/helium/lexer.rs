@@ -7,10 +7,6 @@ use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Directive, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
 use crate::helium::tokens::ValueKind::Word;
 
-// TODO: Line by line token analysis, check if a line causes an error, if so
-//  return the error but not the token stream
-
-/// The new class for tokenizing the file.
 pub struct Lexer<'a> {
     file_name: &'a str,
 

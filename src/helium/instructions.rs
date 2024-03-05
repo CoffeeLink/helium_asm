@@ -207,6 +207,59 @@ pub enum Argument {
     ImmediateIdentifier(String),
 }
 
+impl Argument {
+    
+    pub fn kind(&self) -> String {
+        if self.is_register() {
+            "Register".to_string()
+        } else { 
+            "Integer".to_string()
+        }
+    }
+
+    /// Returns true if the argument is a register.
+    ///
+    /// # Examples:
+    /// register kinds:
+    /// ```
+    /// use helium_asm::helium::instructions::Argument;
+    ///
+    /// let a = Argument::Register(10);
+    /// assert_eq!(a.is_register(), true);
+    ///
+    /// let b = Argument::RegisterIdentifier("ArgName".to_string());
+    /// assert_eq!(b.is_register(), true);
+    ///
+    /// assert_eq!(a.is_integer(), false);
+    /// assert_eq!(a.is_integer(), false);
+    ///
+    /// ```
+    pub fn is_register(&self) -> bool {
+        matches!(self, Argument::Register(_)) || matches!(self, Argument::RegisterIdentifier(_))
+    }
+
+    /// Returns true if the argument is an integer.
+    ///
+    /// # Examples:
+    /// integer kinds:
+    /// ```
+    /// use helium_asm::helium::instructions::Argument;
+    ///
+    /// let a = Argument::Immediate(10);
+    /// assert_eq!(a.is_integer(), true);
+    ///
+    /// let b = Argument::ImmediateIdentifier("ArgName".to_string());
+    /// assert_eq!(b.is_integer(), true);
+    ///
+    /// assert_eq!(a.is_register(), false);
+    /// assert_eq!(b.is_register(), false);
+    ///
+    /// ```
+    pub fn is_integer(&self) -> bool {
+        matches!(self, Argument::Immediate(_)) || matches!(self, Argument::ImmediateIdentifier(_))
+    }
+}
+
 impl Display for Argument {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
