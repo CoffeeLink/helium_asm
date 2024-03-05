@@ -10,6 +10,8 @@ loop:
     ADD $A, $B, $C;
     MOV $B, $A;
     MOV $A, $A;
+
+    ADD $A, 100, $B; // Should error.
     
     #skipto 100;
     MOV $X, $A; // Export to X

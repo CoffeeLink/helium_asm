@@ -36,7 +36,7 @@ fn main() {
 
     let errors = validate_tree(&tree);
 
-    if !errors.is_empty() { 
+    if !errors.is_empty() {
         display_errors_and_exit(errors, &file_contents)
     }
 }
@@ -48,7 +48,7 @@ fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
         println!("{} {}{}",
                  err.line.bright_red(),
                  "|".blue(),
-                 source.lines().nth((err.line) as usize).unwrap().yellow());
+                 source.lines().nth(err.line as usize).unwrap().yellow());
         println!("   {}", "|\n".blue());
         println!("{}", err.message.bright_red());
     }

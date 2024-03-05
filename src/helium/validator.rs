@@ -15,9 +15,9 @@ enum ArgType {
 impl PartialEq<Argument> for ArgType {
     fn eq(&self, other: &Argument) -> bool {
         match self {
-            ArgType::Register => { other.is_register() }
+            Register => { other.is_register() }
             ArgType::Integer => { other.is_integer() }
-            ArgType::Any => { true }
+            Any => { true }
         }
     }
 }
@@ -25,9 +25,9 @@ impl PartialEq<Argument> for ArgType {
 impl Display for ArgType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ArgType::Register => write!(f, "Register"),
+            Register => write!(f, "Register"),
             ArgType::Integer => write!(f, "Int"),
-            ArgType::Any => write!(f, "Reg/Int")
+            Any => write!(f, "Reg/Int")
         }
     }
 }
@@ -37,13 +37,13 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
     if instruction.args.len() != expectation.len() {
         return if instruction.args.len() > expectation.len() {
             vec![HeliumError::new(
-                format!("Too many arguments in instruction: {instruction}, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
+                format!("Too many arguments, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
                 0,
                 0
             )]
         } else {
             vec![HeliumError::new(
-                format!("Not enough arguments in instruction: {instruction}, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
+                format!("Not enough arguments, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
                 0,
                 0
             )]
@@ -54,7 +54,7 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
     for (arg, exp) in zip(instruction.clone().args, expectation) {
         if exp != arg {
             errors.push(HeliumError::new(
-                format!("Invalid argument type in instruction: {instruction}, expected: {}, got: {}.", exp, arg.kind()),
+                format!("Invalid argument type, expected: {}, got: {}.", exp, arg.kind()),
                 0,
                 0,
             ))
@@ -153,7 +153,7 @@ pub fn validate_tree(tree : &ProgramTree) -> Vec<HeliumError> {
     for segment in tree.clone().segments {
         for element in segment.elements {
             if !element.is_instruction() { continue }
-            let ins = match element { ProgramElement::Instruction(Ins)=>Ins, _=> unreachable!() };
+            let ins = match element { ProgramElement::Instruction(i)=>i, _=> unreachable!() };
             errors.extend(validate_instruction(&ins));
         }
     }

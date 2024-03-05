@@ -190,10 +190,13 @@ impl AsmInstruction {
 pub struct Instruction {
     pub kind: AsmInstruction,
     pub args: Vec<Argument>,
+
+    pub line: u16,
+    pub char: u16
 }
 impl Instruction {
     pub fn new(kind: AsmInstruction) -> Self {
-        Self { kind, args: vec![] }
+        Self { kind, args: vec![], line: 0, char: 0 }
     }
     // TODO: Add Instruction Validation.
 }
@@ -208,15 +211,13 @@ pub enum Argument {
 }
 
 impl Argument {
-    
     pub fn kind(&self) -> String {
         if self.is_register() {
             "Register".to_string()
-        } else { 
+        } else {
             "Integer".to_string()
         }
     }
-
     /// Returns true if the argument is a register.
     ///
     /// # Examples:
