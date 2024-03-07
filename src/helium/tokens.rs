@@ -71,8 +71,7 @@ pub struct Token {
     pub value: Option<ValueKind>,
     // For Debug/Error report purposes
     pub file: Option<String>,
-    pub line: Option<usize>,
-    pub char: Option<usize>,
+    pub position : Option<Position>
 }
 
 impl Token {
@@ -80,17 +79,14 @@ impl Token {
         token_kind: TokenKind,
         value: Option<ValueKind>,
         file: Option<String>,
-        line: Option<usize>,
-        char: Option<usize>,
+        position: Option<Position>
     ) -> Self {
         Self {
             kind: token_kind,
             value,
 
             file,
-            line,
-            char,
-
+            position
         }
     }
     pub fn from_kind(token_kind: TokenKind) -> Self {
@@ -99,8 +95,7 @@ impl Token {
             value: None,
 
             file: None,
-            line: None,
-            char: None,
+            position: None
         }
     }
 
@@ -110,8 +105,7 @@ impl Token {
             value: Some(value),
 
             file: None,
-            line: None,
-            char: None,
+            position: None
         }
     }
 
@@ -120,9 +114,8 @@ impl Token {
         self
     }
 
-    pub fn set_position(mut self, line: usize, char: usize) -> Self {
-        self.line = Some(line);
-        self.char = Some(char);
+    pub fn set_position(mut self, line: usize, char: usize, len: usize) -> Self {
+        self.position = Some(Position::new(line, char, len));
         self
     }
 

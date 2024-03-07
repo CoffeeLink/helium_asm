@@ -89,7 +89,7 @@ impl <'a> Lexer <'a> {
                 Err(_) => {
                     self.errors.push(HeliumError::new("Man wtf".to_string(), Position {
                         line: self.line,
-                        chr_start: self.char,
+                        chr_start: self.char - word.len(),
                         length: word.len()
                     }
                     ));
@@ -149,7 +149,7 @@ impl <'a> Lexer <'a> {
                             "bruh, epic int fail.".to_string(),
                             Position {
                                 line: self.line,
-                                chr_start: self.char,
+                                chr_start: self.char - word.len(),
                                 length: word.len()
                             }
                         ));
@@ -199,7 +199,7 @@ impl <'a> Lexer <'a> {
         if num_out.is_err() {
             self.errors.push(HeliumError::new("ParseInt Error".to_string(), Position {
                 line: self.line,
-                chr_start: self.char,
+                chr_start: self.char - word.len(),
                 length: word.len()
             }
             ));
@@ -214,14 +214,14 @@ impl <'a> Lexer <'a> {
         self.tokens.push(
             Token::from_kind(kind)
             .set_file_name(self.file_name.to_string())
-            .set_position(self.line, self.char - len)
+            .set_position(self.line, self.char - len, len)
         )
     }
     fn new_token_with_value(&mut self, kind: TokenKind, value: ValueKind, len: usize) {
         self.tokens.push(
             Token::with_value(kind, value)
             .set_file_name(self.file_name.to_string())
-            .set_position(self.line, self.char - len)
+            .set_position(self.line, self.char - len, len)
         )
     }
 
@@ -236,7 +236,7 @@ impl <'a> Lexer <'a> {
                     format!("Incompatible char: {}", start_char.unwrap()),
                     Position {
                         line: self.line,
-                        chr_start: self.char,
+                        chr_start: self.char - word.len(),
                         length: word.len()
                     }
                 ));
@@ -258,7 +258,7 @@ impl <'a> Lexer <'a> {
                         format!("Incompatible char: {}", ch),
                         Position {
                             line: self.line,
-                            chr_start: self.char,
+                            chr_start: self.char - word.len(),
                             length: word.len()
                         }
                     ));

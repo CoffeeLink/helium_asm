@@ -38,11 +38,16 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
     // check arg count, check arg types, return.
     if instruction.args.len() != expectation.len() {
         return if instruction.args.len() > expectation.len() {
+            let last = instruction.tokens_used.last().unwrap().position.unwrap();
+
+            let first_chr = instruction.tokens_used[expectation.len() + 1].position.unwrap().chr_start;
+            let last_chr = last.chr_start;
+            let len_between = (last_chr - first_chr) + last.length;
 
             let pos = Position::new(
-                instruction.tokens_used.first().unwrap().line.unwrap(),
-                instruction.tokens_used[expectation.len()].char.unwrap() + instruction.tokens_used[expectation.len()].len.unwrap(),
-                instruction.tokens_used.last().unwrap().len.unwrap()
+                instruction.tokens_used.first().unwrap().position.unwrap().line,
+                first_chr,
+                len_between
             );
 
             vec![HeliumError::new(
@@ -50,13 +55,11 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
                 pos
             )]
         } else {
-
-            let pos = Position::new(
-            );
+            let first_pos = instruction.tokens_used.first().unwrap().position.unwrap();
 
             vec![HeliumError::new(
                 format!("Not enough arguments, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
-                pos
+                first_pos
             )]
         }
     }
@@ -66,9 +69,9 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
         if exp != arg {
 
             let pos = Position::new(
-                instruction.tokens_used[index + 1].line.unwrap(),
-                instruction.tokens_used[index + 1].char.unwrap(),
-                instruction.tokens_used[index + 1].len.unwrap()
+                instruction.tokens_used[index + 1].position.unwrap().line,
+                instruction.tokens_used[index + 1].position.unwrap().chr_start,
+                instruction.tokens_used[index + 1].position.unwrap().length
             );
 
             errors.push(HeliumError::new(
