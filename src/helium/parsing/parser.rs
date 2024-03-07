@@ -230,6 +230,8 @@ impl<'a> Parser<'a> {
     fn parse_instruction(&mut self, tree: &mut ProgramTree, token: &Token) {
         let asm_code = token.value.clone().unwrap().get_instruction_code().unwrap();
         let mut ins = instructions::Instruction::new(asm_code);
+        
+        ins.tokens_used.push(token.clone());
 
         while let Some(next) = self.tokens.peek() {
             if next.kind == Newline || next.kind == SemiColon {
@@ -244,12 +246,14 @@ impl<'a> Parser<'a> {
             if token.kind != Identifier && token.kind != Integer && token.kind != Register {
                 self.errors.push(Named {
                     error: format!(
-                        "Mismatched Types. expected: Identifier, Register Or Integer; found: {}",
+                        "Mismatched Types. expected: Identifier, Register Or Integer; found: {}", //more like an unexpected token but whatever.
                         token.kind
                     ),
                 });
                 continue;
             }
+            
+            ins.tokens_used.push(token.clone());
 
             if token.kind == Integer {
                 let val = token.value.unwrap().get_int_value().unwrap();

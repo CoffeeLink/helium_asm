@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-
+use crate::helium::position::Position;
 
 
 #[derive(Debug)]
@@ -46,18 +46,15 @@ impl Error {
 // new error system.
 #[derive(Clone, Debug)]
 pub struct HeliumError { // Todo: refactor name to 'Error' when ready for refactoring.
-    pub line: u32,
-    pub char: u32,
-
+    pub pos: Position,
     pub message : String // this will do for now.
 }
 
 impl HeliumError {
-    pub fn new(message: String, line: u32, char: u32) -> Self {
+    pub fn new(message: String, pos: Position) -> Self {
         Self {
-            line,
-            char,
-            message
+            message,
+            pos,
         }
     }
 }

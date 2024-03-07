@@ -43,12 +43,20 @@ fn main() {
 
 fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
     for err in errors {
-        println!("{} {}", "An error occurred on line: ".bright_blue(), err.line.underline());
+
+        let line = source.lines().nth(err.pos.line).unwrap();
+        let error_line = format!("{}{}{}",
+                                 err.pos.find_before(line).unwrap(),
+                                 err.pos.find(line).unwrap().to_string().underline().yellow(),
+                                 err.pos.find_after(line).unwrap());
+        let error_line = error_line.trim();
+
+        println!("{} {}:{}", "An error occurred on: ".bright_blue(), err.pos.line.underline(), (err.pos.chr_start + err.pos.length).underline());
         println!("   {}", "| ".blue());
         println!("{} {}{}",
-                 err.line.bright_red(),
+                 err.pos.line.bright_red(),
                  "|".blue(),
-                 source.lines().nth(err.line as usize).unwrap().yellow());
+                 error_line);
         println!("   {}", "|\n".blue());
         println!("{}", err.message.bright_red());
     }

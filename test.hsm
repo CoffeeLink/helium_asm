@@ -12,7 +12,8 @@ loop:
     MOV $A, $A;
 
     ADD $A, 100, $B; // Should error.
-    
+ADD $A, 234, 100, 80; // should also error.
+
     #skipto 100;
     MOV $X, $A; // Export to X
     mov $1, 100; // $<id> test

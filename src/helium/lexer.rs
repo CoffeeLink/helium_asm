@@ -3,6 +3,7 @@ use std::num::ParseIntError;
 use std::str::{Chars, FromStr};
 use crate::helium::errors::HeliumError;
 use crate::helium::instructions::AsmInstruction;
+use crate::helium::position::Position;
 use crate::helium::tokens::{Token, TokenKind, ValueKind};
 use crate::helium::tokens::TokenKind::{Comma, ConstantDeclaration, Directive, Identifier, Instruction, Integer, Label, Newline, Register, SemiColon};
 use crate::helium::tokens::ValueKind::Word;
@@ -14,8 +15,8 @@ pub struct Lexer<'a> {
     pub tokens: Vec<Token>,
     pub errors: Vec<HeliumError>,
 
-    line: u32,
-    char: u32
+    line: usize,
+    char: usize
 }
 impl <'a> Lexer <'a> {
     pub fn new(name: &'a str, file_content: &'a str) -> Self {
@@ -57,10 +58,10 @@ impl <'a> Lexer <'a> {
             '\n' => {
                 self.line += 1;
                 self.char = 0;
-                self.new_token(Newline);
+                self.new_token(Newline, 0);
             }
-            ';' => self.new_token(SemiColon),
-            ',' => self.new_token(Comma),
+            ';' => self.new_token(SemiColon, 1),
+            ',' => self.new_token(Comma, 1),
             '-' => self.parse_negative(),
             '/' => self.parse_comment(),
             '$' => self.parse_register(),
@@ -81,23 +82,31 @@ impl <'a> Lexer <'a> {
         };
 
         if let Some(ins) = AsmInstruction::match_instruction(&word) {
-            self.new_token_with_value(Instruction, ValueKind::Instruction(ins))
+            self.new_token_with_value(Instruction, ValueKind::Instruction(ins), word.len())
         } else if first_char.is_numeric() {
             let num = match self.parse_int(&word, false) {
                 Ok(n) => n,
                 Err(_) => {
-                    self.errors.push(HeliumError::new("Man wtf".to_string(), self.line, self.char));
+                    self.errors.push(HeliumError::new("Man wtf".to_string(), Position {
+                        line: self.line,
+                        chr_start: self.char,
+                        length: word.len()
+                    }
+                    ));
                     return;
                 }
             };
-            self.new_token_with_value(Integer, ValueKind::Integer(num));
+            self.new_token_with_value(Integer, ValueKind::Integer(num), word.len());
         } else if word.ends_with(':') {
             word.remove(word.len() - 1);
-            self.new_token_with_value(Label, Word(word));
+
+            let len = word.len();
+            self.new_token_with_value(Label, Word(word), len);
         } else if word == "const" || word == "CONST" {
-            self.new_token(ConstantDeclaration)
+            self.new_token(ConstantDeclaration, 0)
         } else {
-            self.new_token_with_value(Identifier, Word(word));
+            let len = word.len();
+            self.new_token_with_value(Identifier, Word(word), len);
         }
     }
     fn parse_directive(&mut self) {
@@ -111,12 +120,16 @@ impl <'a> Lexer <'a> {
         if word.is_empty() {
             self.errors.push(HeliumError::new(
                 "Invalid directive name: empty prefix".to_string(),
-                self.line,
-                self.char
+                Position {
+                    line: self.line,
+                    chr_start: self.char,
+                    length: word.len()
+                }
             ));
             return;
         }
-        self.new_token_with_value(Directive, Word(word))
+        let len= word.len();
+        self.new_token_with_value(Directive, Word(word), len)
     }
     fn parse_register(&mut self) {
         let word = match self.parse_word(None) {
@@ -134,23 +147,31 @@ impl <'a> Lexer <'a> {
                     self.errors.push(
                         HeliumError::new(
                             "bruh, epic int fail.".to_string(),
-                            self.line,
-                            self.char
-                        )
-                    );
+                            Position {
+                                line: self.line,
+                                chr_start: self.char,
+                                length: word.len()
+                            }
+                        ));
                     return;
                 }
             };
-            self.new_token_with_value(Register, ValueKind::Integer(int));
+            self.new_token_with_value(Register, ValueKind::Integer(int), word.len());
         } else {
-            self.new_token_with_value(Register, Word(word));
+            let len = word.len();
+            self.new_token_with_value(Register, Word(word), len);
         }
     }
     fn parse_comment(&mut self) {
         // check for '/' then consume until newline. (don't consume the newline)
         let next = self.source.peek();
         if next != Some(&'/') {
-            self.errors.push(HeliumError::new("Epic comment fail.".to_string(), self.line, self.char))
+            self.errors.push(HeliumError::new("Epic comment fail.".to_string(), Position {
+                line: self.line,
+                chr_start: self.char,
+                length: 2
+            }
+            ));
         }
         self.source.next();
 
@@ -161,7 +182,7 @@ impl <'a> Lexer <'a> {
                 break;
             }
         }
-        self.new_token(Newline);
+        self.new_token(Newline, 0);
     }
     fn parse_negative(&mut self) {
         // parse the following number into a token.
@@ -176,28 +197,34 @@ impl <'a> Lexer <'a> {
         let num_out = self.parse_int(&word, true);
 
         if num_out.is_err() {
-            self.errors.push(HeliumError::new("ParseInt Error".to_string(), self.line, self.char));
+            self.errors.push(HeliumError::new("ParseInt Error".to_string(), Position {
+                line: self.line,
+                chr_start: self.char,
+                length: word.len()
+            }
+            ));
             return;
         }
 
         let num = num_out.unwrap();
 
-        self.new_token_with_value(Integer, ValueKind::Integer(num));
+        self.new_token_with_value(Integer, ValueKind::Integer(num), word.len());
     }
-    fn new_token(&mut self, kind: TokenKind) {
+    fn new_token(&mut self, kind: TokenKind, len: usize) {
         self.tokens.push(
             Token::from_kind(kind)
             .set_file_name(self.file_name.to_string())
-            .set_position(self.line, self.char)
+            .set_position(self.line, self.char - len)
         )
     }
-    fn new_token_with_value(&mut self, kind: TokenKind, value: ValueKind) {
+    fn new_token_with_value(&mut self, kind: TokenKind, value: ValueKind, len: usize) {
         self.tokens.push(
             Token::with_value(kind, value)
             .set_file_name(self.file_name.to_string())
-            .set_position(self.line, self.char)
+            .set_position(self.line, self.char - len)
         )
     }
+
     fn parse_word(&mut self, start_char: Option<char>) -> Result<String, HeliumError> {
         let mut word = String::new();
         let mut is_string = false;
@@ -207,9 +234,12 @@ impl <'a> Lexer <'a> {
             else if !Self::is_const_compatible(&start_char.unwrap()) {
                 return Err(HeliumError::new(
                     format!("Incompatible char: {}", start_char.unwrap()),
-                    self.line,
-                    self.char
-                ))
+                    Position {
+                        line: self.line,
+                        chr_start: self.char,
+                        length: word.len()
+                    }
+                ));
             } else {
                 word.push(start_char.unwrap())
             }
@@ -226,9 +256,12 @@ impl <'a> Lexer <'a> {
                     self.char += 1;
                     return Err(HeliumError::new(
                         format!("Incompatible char: {}", ch),
-                        self.line,
-                        self.char
-                    ))
+                        Position {
+                            line: self.line,
+                            chr_start: self.char,
+                            length: word.len()
+                        }
+                    ));
                 }
             } else {
                 if *ch == '"' {

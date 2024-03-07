@@ -1,6 +1,7 @@
 use crate::helium::instructions::AsmInstruction;
 use crate::helium::tokens::ValueKind::Word;
 use std::fmt::{Display, Formatter};
+use crate::helium::position::Position;
 
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub enum TokenKind {
@@ -70,8 +71,8 @@ pub struct Token {
     pub value: Option<ValueKind>,
     // For Debug/Error report purposes
     pub file: Option<String>,
-    pub line: Option<u32>,
-    pub char: Option<u32>,
+    pub line: Option<usize>,
+    pub char: Option<usize>,
 }
 
 impl Token {
@@ -79,8 +80,8 @@ impl Token {
         token_kind: TokenKind,
         value: Option<ValueKind>,
         file: Option<String>,
-        line: Option<u32>,
-        char: Option<u32>,
+        line: Option<usize>,
+        char: Option<usize>,
     ) -> Self {
         Self {
             kind: token_kind,
@@ -89,6 +90,7 @@ impl Token {
             file,
             line,
             char,
+
         }
     }
     pub fn from_kind(token_kind: TokenKind) -> Self {
@@ -118,7 +120,7 @@ impl Token {
         self
     }
 
-    pub fn set_position(mut self, line: u32, char: u32) -> Self {
+    pub fn set_position(mut self, line: usize, char: usize) -> Self {
         self.line = Some(line);
         self.char = Some(char);
         self

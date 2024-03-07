@@ -4,8 +4,10 @@ use crate::helium::parsing::ProgramElement;
 use crate::helium::errors::HeliumError;
 use crate::helium::instructions::{Argument, AsmInstruction, Instruction};
 use crate::helium::parsing::ProgramTree;
+use crate::helium::position::Position;
 use crate::helium::validator::ArgType::{Any, Register};
 
+#[allow(dead_code)]
 enum ArgType {
     Register,
     Integer,
@@ -36,27 +38,42 @@ fn validate(instruction: &Instruction, expectation: Vec<ArgType>) -> Vec<HeliumE
     // check arg count, check arg types, return.
     if instruction.args.len() != expectation.len() {
         return if instruction.args.len() > expectation.len() {
+
+            let pos = Position::new(
+                instruction.tokens_used.first().unwrap().line.unwrap(),
+                instruction.tokens_used[expectation.len()].char.unwrap() + instruction.tokens_used[expectation.len()].len.unwrap(),
+                instruction.tokens_used.last().unwrap().len.unwrap()
+            );
+
             vec![HeliumError::new(
                 format!("Too many arguments, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
-                0,
-                0
+                pos
             )]
         } else {
+
+            let pos = Position::new(
+            );
+
             vec![HeliumError::new(
                 format!("Not enough arguments, expected: {}, got: {}.", expectation.len(), instruction.args.len()),
-                0,
-                0
+                pos
             )]
         }
     }
 
     let mut errors : Vec<HeliumError> = vec![];
-    for (arg, exp) in zip(instruction.clone().args, expectation) {
+    for (index, (arg, exp)) in zip(instruction.clone().args, expectation).enumerate() {
         if exp != arg {
+
+            let pos = Position::new(
+                instruction.tokens_used[index + 1].line.unwrap(),
+                instruction.tokens_used[index + 1].char.unwrap(),
+                instruction.tokens_used[index + 1].len.unwrap()
+            );
+
             errors.push(HeliumError::new(
                 format!("Invalid argument type, expected: {}, got: {}.", exp, arg.kind()),
-                0,
-                0,
+                pos
             ))
         }
     }

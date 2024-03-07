@@ -11,6 +11,7 @@ use crate::helium::instructions::AsmInstruction::{
     SubWithCarry, WaitUntilInterrupt, Xor,
 };
 use std::fmt::{Display, Formatter};
+use crate::helium::tokens::Token;
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum AsmInstruction {
@@ -191,14 +192,12 @@ pub struct Instruction {
     pub kind: AsmInstruction,
     pub args: Vec<Argument>,
 
-    pub line: u16,
-    pub char: u16
+    pub tokens_used: Vec<Token>
 }
 impl Instruction {
     pub fn new(kind: AsmInstruction) -> Self {
-        Self { kind, args: vec![], line: 0, char: 0 }
+        Self { kind, args: vec![], tokens_used: vec![]}
     }
-    // TODO: Add Instruction Validation.
 }
 
 #[derive(Debug, Clone)]
@@ -258,6 +257,15 @@ impl Argument {
     /// ```
     pub fn is_integer(&self) -> bool {
         matches!(self, Argument::Immediate(_)) || matches!(self, Argument::ImmediateIdentifier(_))
+    }
+
+    pub fn calculate_len(&self) -> usize {
+        match self {
+            Argument::Register(i) => (*i as f64).log10().floor() as usize + 1,
+            Argument::RegisterIdentifier(s) => s.len(),
+            Argument::Immediate(i) => (*i as f64).log10().floor() as usize + 1,
+            Argument::ImmediateIdentifier(s) => s.len()
+        }
     }
 }
 
