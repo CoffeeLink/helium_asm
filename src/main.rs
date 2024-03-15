@@ -9,8 +9,8 @@ use owo_colors::OwoColorize;
 use helium_asm::helium::validator::validate_tree;
 /*
 TODO: Features to finish:
-    - Instruction Validity check
     - refactor errors to a global error system.
+    - add data types
     - assembler.
  */
 
@@ -32,13 +32,13 @@ fn main() {
             }
             exit(1)
         });
-    print!("{}", tree);
 
     let errors = validate_tree(&tree);
 
     if !errors.is_empty() {
         display_errors_and_exit(errors, &file_contents)
     }
+    print!("{}", tree);
 }
 
 fn display_errors_and_exit(errors: Vec<HeliumError>, source: &str) -> ! {
