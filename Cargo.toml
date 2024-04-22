@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 description = "A modular assembler that can be used in many ways."
 
+authors = ["CoffeeLink <coffee@coffeelink.hu>"]
+repository = "https://github.com/CoffeeLink/helium_asm"
+
+readme = "readme.md"
+license = "GPL-3"
+license-file = "LICENSE"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
