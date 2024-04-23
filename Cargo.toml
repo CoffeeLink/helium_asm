@@ -9,7 +9,7 @@ repository = "https://github.com/CoffeeLink/helium_asm"
 
 readme = "readme.md"
 license = "GPL-3"
-license-file = "LICENSE"
+#license-file = "LICENSE"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
