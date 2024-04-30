@@ -20,6 +20,7 @@ path = "src/main.rs"
 [dependencies]
 clap = "4.5.4"
 thiserror = "1.0.59"
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 anyhow = "1.0.82"

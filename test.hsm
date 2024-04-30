@@ -1,0 +1,9 @@
+#target "helium";
+
+u8 ptr meow = 127;
+
+"\"hello\""
+
+main:
+
+"\\"
