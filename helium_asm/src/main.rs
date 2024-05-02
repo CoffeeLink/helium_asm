@@ -13,7 +13,7 @@ mod lexer;
 mod parser;
 
 fn main() -> Result<()> {
-    let contents = read_to_string("test.hsm").unwrap();
+    let contents = read_to_string("../../test.hsm").unwrap();
 
     let mut lexer = Lexer::new("test.hsm", &contents);
 

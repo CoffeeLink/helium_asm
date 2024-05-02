@@ -1,0 +1,28 @@
+[package]
+name = "helium_asm"
+version = "0.1.0"
+edition = "2021"
+description = "A modular assembler that can be used in many ways."
+
+authors = ["CoffeeLink <coffee@coffeelink.hu>"]
+repository = "https://github.com/CoffeeLink/helium_asm"
+
+license = "GPL-3"
+#license-file = "LICENSE"
+
+readme = "../readme.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "hasm"
+path = "src/main.rs"
+
+[dependencies]
+clap = "4.5.4"
+thiserror = "1.0.59"
+lazy_static = "1.4.0"
+helium_asm_macros = {path = "../helium_asm_macros"}
+
+[dev-dependencies]
+anyhow = "1.0.82"
