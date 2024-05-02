@@ -10,7 +10,6 @@ pub struct Lexer<'a> {
 
     source: Peekable<Chars<'a>>,
     tokens: Vec<Token>,
-    errors: Vec<Error>,
 
     current_line: usize,
     current_char: usize,
@@ -23,7 +22,6 @@ impl <'a> Lexer<'a> {
             source: source.chars().peekable(),
 
             tokens: vec![],
-            errors: vec![],
 
             current_line: 0,
             current_char: 0,
@@ -31,12 +29,12 @@ impl <'a> Lexer<'a> {
     }
 
     /// Tokenizes the given source and returns the tokens/errors(if errors are detected)
-    pub fn tokenize(mut self) -> (Vec<Token>, Vec<Error>) {
+    pub fn tokenize(mut self) -> Vec<Token> {
         while self.source.peek().is_some() {
             self.next_token()
         }
 
-        (self.tokens, self.errors) // epic return;
+        self.tokens
     }
 
     fn get_next(&mut self) -> Option<char> {
@@ -102,13 +100,6 @@ impl <'a> Lexer<'a> {
                 } else if word.starts_with('#') && !word.ends_with(':') {
                     word.remove(0);
                     self.new_token_with_value(Directive, word)
-
-                } else if word.starts_with('#') && word.ends_with(':') {
-                    self.errors.push(
-                        Error::LexicalError("You done fucked up (you placed a : after a directives name)"
-                            .into()
-                        )
-                    )
 
                 } else if word.ends_with(':') {
                     word.remove(word.len()-1);
