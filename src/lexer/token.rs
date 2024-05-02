@@ -38,28 +38,21 @@ pub struct Token {
 
     pub line: usize,
     pub char: usize,
-
-    pub file: Option<String>
 }
 
 impl Token {
     #[inline]
     pub fn new(kind: TokenKind, value: Option<String>, line: usize, char: usize) -> Self {
-        Self { kind, value, line, char, file: None }
+        Self { kind, value, line, char}
     }
 
     #[inline]
     pub fn with_kind(token_kind: TokenKind, line: usize, char: usize ) -> Self {
-        Self { kind: token_kind, line, char, value: None, file: None}
+        Self { kind: token_kind, line, char, value: None}
     }
 
     #[inline]
     pub fn with_value(kind: TokenKind, value: String, line: usize, char: usize) -> Self {
-        Self { kind, value: Some(value), line, char, file: None }
-    }
-
-    #[inline]
-    pub fn set_file(&mut self, file: String) {
-        self.file = Some(file);
+        Self { kind, value: Some(value), line, char}
     }
 }
