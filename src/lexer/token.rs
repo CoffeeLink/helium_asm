@@ -5,6 +5,7 @@ pub enum TokenKind {
     Directive, // #<DirectiveName> <Value>, ... ,<Value>;
 
     Identifier, // Any string that doesn't match other rules.
+    String, // Any token marked by a "<contents>"
     RegisterMarker, // $ <Str>
     AddressMarker, // @ <Str>
 

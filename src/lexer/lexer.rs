@@ -90,11 +90,14 @@ impl <'a> Lexer<'a> {
             other if other.is_whitespace() => { /* nothing */ },
 
             start => {
-                let mut word = self.parse_string(start);
+                let (mut word, is_str) = self.parse_string(start);
 
                 // handle directives.
 
-                if word == "ptr" || word == "PTR" {
+                if is_str {
+                    self.new_token_with_value(TokenKind::String, word);
+
+                } else if word == "ptr" || word == "PTR" {
                     self.new_token_with_kind(PointerTypeMarker);
 
                 } else if word.starts_with('#') && !word.ends_with(':') {
@@ -112,7 +115,9 @@ impl <'a> Lexer<'a> {
         }
     }
 
-    fn parse_string(&mut self, first_char: char) -> String {
+    /// Parses a String/Identifier
+    /// The bool determines if it was a marked string.
+    fn parse_string(&mut self, first_char: char) -> (String, bool) {
         let mut out : String;
         let str_mode = first_char == '"';
 
@@ -145,7 +150,7 @@ impl <'a> Lexer<'a> {
             out.push(self.get_next().unwrap());
             escaped = false;
         }
-        out
+        (out, str_mode)
     }
 
     fn word_compatibility_check(ch: &char) -> bool {
