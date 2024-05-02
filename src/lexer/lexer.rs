@@ -166,19 +166,15 @@ impl <'a> Lexer<'a> {
         }
     }
 
+    #[inline]
     fn new_token_with_kind(&mut self, kind: TokenKind) {
         // we store the last chars position rather than the first cuz the size of the token is unknown.
-        let mut token = Token::with_kind(kind, self.current_line, self.current_char);
-        token.set_file(self.file_name.into());
-
-        self.tokens.push(token)
+        self.tokens.push(Token::with_kind(kind, self.current_line, self.current_char))
     }
 
+    #[inline]
     fn new_token_with_value(&mut self, kind: TokenKind, value: String) {
-        let mut token = Token::with_value(kind, value, self.current_line, self.current_char);
-        token.set_file(self.file_name.into());
-
-        self.tokens.push(token)
+        self.tokens.push(Token::with_value(kind, value, self.current_line, self.current_char))
     }
 }
 
